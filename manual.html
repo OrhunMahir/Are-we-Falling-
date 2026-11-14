@@ -134,7 +134,7 @@ nav a.cold { opacity: .45; }
       <li>Only a few systems are failing. The pilot sees a list called <b>FAILED SYSTEMS</b> and a four-digit <b>FLIGHT CODE</b> in the top right corner. Ask for the code and type it in above: the handbook then shows <b>which picture marks each failed panel on this flight</b>.</li>
       <li><b>You tell the pilot which picture to look for</b> ("find the bell panel"). A small <b>red light blinks</b> in the top right corner of a failing panel. Panels sit in a <b>different place on every flight</b>: front, ceiling, floor console, side walls, even the wall behind the seat. Tell the pilot to look around and zoom in.</li>
       <li>Panels on the <b>walls behind the seats</b> are out of reach from the seat. The pilot has to <b>stand up (F key)</b> to use them, and <b>sit down again (F)</b> to use anything at the front.</li>
-      <li>All the other panels have pictures too. Touching them does nothing, but it wastes time. <b>Knobs</b>: the pilot clicks a knob, the view moves in, then turns it with the scroll wheel, by dragging sideways or with A and D, and clicks again to let go.</li>
+      <li>All the other panels have pictures too. <b>A wrong switch means turbulence</b>: the aircraft shakes and the passengers get angrier, so do not let the pilot try things at random. <b>Knobs</b>: the pilot clicks a knob, the view moves in, then turns it with the scroll wheel, by dragging sideways or with A and D, and clicks again to let go.</li>
       <li>There is a <b>bottle of whiskey</b> on top of the instrument panel. Every sip buys the pilot <b>8 seconds</b>, but the cockpit gets blurry and the labels hard to read for a while. Six sips and the bottle is empty. Decide together when it is worth it.</li>
       <li>A wrong action costs altitude. <b>Three wrong actions</b> and the aircraft is lost.</li>
       <li>Every flight is different. Do not guess from the last one.</li>
@@ -228,8 +228,8 @@ nav a.cold { opacity: .45; }
   try { saved = localStorage.getItem('awf_t3d'); } catch (e) {}
   var big = window.innerWidth >= 900 && window.innerHeight >= 500;
   var want = big && saved !== '0' && !qs.get('plain');
-  var tower = null, pending = null;
-  window.addEventListener('message', function (e) { if (e.data && e.data.awf === 1) { if (e.data.st && e.data.st.f) setCode(e.data.st.f, true); if (tower) tower.setState(e.data.st); else pending = e.data.st; } });
+  var tower = null, pending = null, onPhase = null;
+  window.addEventListener('message', function (e) { if (e.data && e.data.awf === 1) { if (e.data.st && e.data.st.f) setCode(e.data.st.f, true); if (onPhase && e.data.st) onPhase(e.data.st.ph); if (tower) tower.setState(e.data.st); else pending = e.data.st; } });
   function setPref(v) { try { localStorage.setItem('awf_t3d', v); } catch (e) {} location.reload(); }
   var b3 = document.getElementById('btn3d');
   if (big && !want) { b3.style.display = 'block'; b3.onclick = function () { setPref('1'); }; }
@@ -268,6 +268,13 @@ nav a.cold { opacity: .45; }
     document.getElementById('folder').addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a[href^="#"]'); if (!a) return; e.preventDefault(); setPage(a.getAttribute('href').slice(1)); });
     var peek = false, bp = document.getElementById('btnPeek');
     bp.onclick = function () { peek = !peek; document.body.classList.toggle('peek', peek); tower.setPeek(peek); bp.textContent = peek ? 'BACK TO THE HANDBOOK' : 'LOOK OUT THE WINDOW'; };
+    // the ending is watched through the window: the head comes up by itself, and goes back down for the next flight
+    var lastPh = null;
+    onPhase = function (ph) {
+      var end = ph === 'landing' || ph === 'won' || ph === 'crashed', was = lastPh === 'landing' || lastPh === 'won' || lastPh === 'crashed';
+      if (end && !was && !peek) bp.onclick(); else if (!end && was && peek) bp.onclick();
+      lastPh = ph;
+    };
     window.addEventListener('keydown', function (e) { if (e.code === 'Space' && !(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) { e.preventDefault(); bp.onclick(); } });
     document.getElementById('btnPlain').onclick = function () { setPref('0'); };
   }); }); }); });

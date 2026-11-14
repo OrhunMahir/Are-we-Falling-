@@ -144,6 +144,11 @@
     switch() { noiseBurst(0.03, 0.4, 3400); tone(240, 0.025, 'square', 0.06, 0.02); },
     crank() { noiseBurst(0.06, 0.3, 900); tone(140, 0.05, 'triangle', 0.1); },
     solved() { tone(660, 0.1, 'sine', 0.22); tone(880, 0.1, 'sine', 0.22, 0.1); tone(1320, 0.22, 'sine', 0.2, 0.2); },
+    rattle(p) {   // loose panels and cups in turbulence
+      p = p == null ? 1 : p; const n = 6 + Math.round(p * 12);
+      for (let i = 0; i < n; i++) noiseBurst(0.045, 0.12 + 0.22 * p, 600 + Math.random() * 1500, i * 0.11 + Math.random() * 0.05);
+      tone(52, 0.9 + p * 1.4, 'sawtooth', 0.07 + 0.1 * p); noiseBurst(0.8 + p * 1.2, 0.1 + 0.2 * p, 160);
+    },
     strike() {
       tone(110, 0.5, 'sawtooth', 0.3); tone(116, 0.5, 'sawtooth', 0.3); noiseBurst(0.5, 0.5, 300);
     },

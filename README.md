@@ -12,7 +12,7 @@ Play it by opening `index.html` in a browser. No install, no build step.
 2. The pilot sees **FAILED SYSTEMS** (names such as ENGINE FIRE) and a four-digit **FLIGHT CODE** in the top right corner and reads both to the tower.
 3. The tower types the code into the handbook. The handbook then shows which **picture** marks each failed panel on this flight ("ENGINE FIRE is the flamingo panel"). Pictures are dealt again on every flight. In an online lobby the code arrives by itself.
 4. The pilot finds the panel with that picture (a red light blinks on failing panels), the tower reads the chapter, and they solve it together.
-5. All failures solved in time: the aircraft is saved. Three wrong actions or no time left: it is lost.
+5. All failures solved in time: the aircraft is saved, and both players watch it land from the tower camera. Three wrong actions or no time left: it is lost.
 
 | Mode | Failures | Time | Where the panels are |
 |---|---|---|---|
@@ -20,7 +20,7 @@ Play it by opening `index.html` in a browser. No install, no build step.
 | MAYDAY | 5 | 7:00 | the far side and the ceiling too |
 | BLACK BOX | 7 | 10:00 | anywhere, even on the wall behind the seat |
 
-Eight systems can fail: circuit breakers, engine fire, nav radio, hydraulics, cabin intercom, landing gear, transponder and override keys. On top of that the **passengers** get restless and the pilot has to calm them with the right announcement, and there is a **bottle of whiskey** on the dash: every sip buys 8 seconds, but the cockpit gets blurry and the eyelids start to droop.
+Eight systems can fail: circuit breakers, engine fire, nav radio, hydraulics, cabin intercom, landing gear, transponder and override keys. A **wrong switch means turbulence**: the cockpit shakes and the cabin gets angrier. On top of that the **passengers** get restless and the pilot has to calm them with the right announcement, and there is a **bottle of whiskey** on the dash: every sip buys 8 seconds, but the cockpit gets blurry and the eyelids start to droop.
 
 ## Controls
 

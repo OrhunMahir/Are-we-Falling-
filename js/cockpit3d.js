@@ -456,7 +456,7 @@
     const ctex = new T.CanvasTexture(cv);
     for (let i = 0; i < 34; i++) {
       const mat = new T.SpriteMaterial({ map: ctex, transparent: true, depthWrite: false, opacity: 0.25 + Math.random() * 0.4, color: new T.Color().setHSL(0.6, 0.12, 0.2 + Math.random() * 0.22) });
-      const sp = new T.Sprite(mat); respawn(sp, true); scene.add(sp); clouds.push(sp);
+      const sp = new T.Sprite(mat); sp.userData.o = mat.opacity; respawn(sp, true); scene.add(sp); clouds.push(sp);
     }
     // lightning bolt
     const bg = new T.BufferGeometry(); bg.setAttribute('position', new T.BufferAttribute(new Float32Array(16 * 3), 3));
@@ -464,7 +464,7 @@
   }
   function respawn(sp, anywhere) {
     const side = Math.random() < 0.3;
-    sp.position.set(side ? (Math.random() < 0.5 ? -1 : 1) * (5 + Math.random() * 14) : (Math.random() * 2 - 1) * 16, -2 + Math.random() * 9, anywhere ? -4 - Math.random() * 50 : -54);
+    sp.position.set(side ? (Math.random() < 0.5 ? -1 : 1) * (5 + Math.random() * 14) : (Math.random() * 2 - 1) * 16, -2 + Math.random() * 9, anywhere ? -20 - Math.random() * 42 : -62);
     const s = 5 + Math.random() * 9; sp.scale.set(s * 1.8, s, 1);
     sp.userData.v = 9 + Math.random() * 10;
   }
@@ -489,7 +489,7 @@
     const ag = new T.CylinderGeometry(0.043, 0.05, 1, 12).rotateX(Math.PI / 2).translate(0, 0, 0.5);
     const armMat = lm('#1a2438'); const arm = new T.Mesh(ag, armMat);
     scene.add(g); scene.add(arm);
-    return { side, g, arm, armMat, finger, pos: new T.Vector3(), dir: new T.Vector3(0, 0.4, -1).normalize(), from: new T.Vector3(), to: new T.Vector3(), toDir: new T.Vector3(), fromDir: new T.Vector3(), t: 0, dur: 0.2, phase: 'rest', hold: 0, jab: 0, cb: null, ctrl: null, az: 0, reachK: 0, s: 1, mats, op: 1 };
+    return { side, g, arm, armMat, finger, th, grip: 0, gripR: 0.024, twist: 0, pos: new T.Vector3(), dir: new T.Vector3(0, 0.4, -1).normalize(), from: new T.Vector3(), to: new T.Vector3(), toDir: new T.Vector3(), fromDir: new T.Vector3(), t: 0, dur: 0.2, phase: 'rest', hold: 0, jab: 0, cb: null, ctrl: null, az: 0, reachK: 0, s: 1, mats, op: 1 };
   }
   const _rest = new T.Vector3(), _restDir = new T.Vector3(), _sh = new T.Vector3(), _wr = new T.Vector3();
   function restPose(h) {
@@ -501,7 +501,7 @@
     _restDir.set(-h.side * 0.5, 0.55, -0.67).normalize();
     _rest.addScaledVector(_restDir, 0.105);
   }
-  const _cs = new T.Vector3();
+  const _cs = new T.Vector3(), _gn = new T.Vector3();
   function shoulder(h, az, out, rk) {
     if (rk === undefined) rk = h.reachK;
     const k = 1 + (h.s - 1) * rk;
@@ -536,16 +536,29 @@
         if (h.t >= 1) { h.phase = 'hold'; h.hold = 0.24; h.jab = 1; const f = h.cb; h.cb = null; if (f) f(); }
       } else if (h.phase === 'hold') {
         h.jab = Math.max(0, h.jab - dt * 9);
-        h.pos.copy(h.to).addScaledVector(h.toDir, -0.014 * (1 - h.jab)); h.dir.copy(h.toDir);
+        h.pos.copy(h.to).addScaledVector(h.toDir, -0.014 * (1 - h.jab) * (1 - h.grip)); h.dir.copy(h.toDir);
+        if (focus && focus.c === h.ctrl) {   // turning a knob: the hand stays on it, two fingers around the cap
+          h.hold = 0.3; h.grip = Math.min(1, h.grip + dt * 7);
+          h.dir.lerp(_gn.copy(h.ctrl.panel.slot.normal).negate(), 0.3 * h.grip).normalize(); h.pos.addScaledVector(h.dir, 0.007 * h.grip);
+        }
         h.hold -= dt; if (h.hold <= 0) { h.phase = 'back'; h.t = 0; h.from.copy(h.pos); h.fromDir.copy(h.dir); h.ctrl = null; }
       } else {
         h.t = Math.min(1, h.t + dt / 0.24); const k = h.t * h.t * (3 - 2 * h.t);
         h.pos.lerpVectors(h.from, _rest, k); h.dir.lerpVectors(h.fromDir, _restDir, k).normalize(); h.reachK = Math.max(0, 1 - k);
         if (h.t >= 1) h.phase = 'rest';
       }
+      if (!(focus && focus.c === h.ctrl && h.phase === 'hold')) h.grip = Math.max(0, h.grip - dt * 7);
+      h.twist *= Math.exp(-dt * 4.5);
       h.g.position.copy(h.pos); h.g.lookAt(_v.copy(h.pos).add(h.dir));
+      const gk = h.grip, gs = 1 - 0.3 * gk, R = h.gripR / gs;
+      h.g.scale.setScalar(gs);
+      if (gk > 0.001) h.g.rotateZ(-h.side * 0.5 * gk + h.twist * gk);
       const curl = 1 - h.reachK;                       // fist on the yoke, pointing finger when reaching
-      h.finger.scale.z = 1 - curl * 0.55; h.finger.position.z = -0.0425 - curl * 0.03; h.finger.position.y = -curl * 0.012;
+      h.finger.scale.z = 1 - curl * 0.55 - gk * 0.25; h.finger.position.z = -0.0425 - curl * 0.03 + gk * 0.0105; h.finger.position.y = -curl * 0.012;
+      h.finger.position.x = -h.side * (R + 0.0095) * gk;
+      // the thumb comes round to the other side of the knob
+      h.th.position.set(h.side * (0.032 + (R - 0.003 - 0.032) * gk), -0.012 + 0.01 * gk, -0.105 + 0.057 * gk);
+      h.th.rotation.y = h.side * (0.5 - 0.2 * gk); h.th.scale.z = 1 + 0.5 * gk;
       shoulder(h, Math.abs(h.az) > 1 ? h.az * h.reachK : 0, _sh);
       _wr.copy(h.pos).addScaledVector(h.dir, -0.2);
       // resting arms fade out when the pilot looks down past them, so they never hide a panel
@@ -615,6 +628,7 @@
     const d = c.world().sub(EYE);
     focus = { c, yaw: view.yaw, pitch: view.pitch, fov: view.fov, ty: Math.atan2(-d.x, -d.z), tp: Math.asin(d.y / d.length()), tf: Math.min(view.fov, 16), acc: 0 };
     restore = null; hl.visible = false; canvas.style.cursor = 'ew-resize';
+    hands.forEach((h) => { if (h.ctrl === c) { const far = c.world().distanceTo(camera.position) || 1; h.gripR = Math.max(0.012, Math.min(0.03, ((c.w || 54) - 6) / 2 * MM)) * Math.min(1, h.to.distanceTo(camera.position) / far); h.twist = 0; } });
     if (hooks.onFocus) hooks.onFocus(c);
   }
   function exitFocus() {
@@ -622,7 +636,7 @@
     restore = { yaw: focus.yaw, pitch: focus.pitch, fov: focus.fov }; focus = null; canvas.style.cursor = 'grab';
     if (hooks.onFocus) hooks.onFocus(null);
   }
-  function turnFocus(dir) { if (focus && focus.c.turn) focus.c.turn(dir); }
+  function turnFocus(dir) { if (focus && focus.c.turn) { focus.c.turn(dir); if (focus.c.panel && focus.c.panel.decoy && hooks.onDecoy) hooks.onDecoy(focus.c); hands.forEach((h) => { if (h.ctrl === focus.c) h.twist = Math.max(-0.8, Math.min(0.8, h.twist + dir * 0.4)); }); } }
   function dirAt(cx, cy, out) {
     const r = canvas.getBoundingClientRect();
     ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
@@ -676,7 +690,7 @@
       if (hit && hit.ctrl) {
         const why = blocked(hit); if (why) { if (hooks.onBlocked) hooks.onBlocked(why); return; }
         const c = hit.ctrl, hx = hit.hx, hy = hit.hy;
-        if (c.turn) reach(c, () => enterFocus(c)); else reach(c, () => c.press(hx, hy));
+        if (c.turn) reach(c, () => enterFocus(c)); else reach(c, () => { c.press(hx, hy); if (c.panel && c.panel.decoy && hooks.onDecoy) hooks.onDecoy(c); });
       }
     };
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', () => { down = null; drag = false; });
@@ -767,7 +781,7 @@
     slots.forEach((s) => {
       if (used.has(s.id)) return;
       if (s.fixed) { const P = new Panel(s, D.fixedTitle(s.fixed), { screen: s.fixed !== 'data', symbol: s.fixed === 'data' ? fixedSym.data : null }); D.fixed(s.fixed, P, flight, api); P.touch(); return; }
-      const d = D.next(rng); const P = new Panel(s, d.title, { symbol: syms.pop() }); d.build(P, rng); P.touch();
+      const d = D.next(rng); const P = new Panel(s, d.title, { symbol: syms.pop() }); P.decoy = true; d.build(P, rng); P.touch();
     });
     focus = null; restore = null; stand(false, true); EYE.copy(SEAT); resetView();
     out.controllers = ctrls;
@@ -799,7 +813,8 @@
     if (pose.k !== pose.to) pose.k = pose.to > pose.k ? Math.min(1, pose.k + dt / 1.15) : Math.max(0, pose.k - dt / 0.95);
     const pk = pose.k, pe = pk * pk * (3 - 2 * pk), rise = Math.min(1, pe * 1.6), step = Math.max(0, (pe - 0.3) / 0.7);
     EYE.set(SEAT.x + (STAND.x - SEAT.x) * step, SEAT.y + (STAND.y - SEAT.y) * rise + Math.sin(pk * Math.PI * 4) * 0.018 * Math.sin(pk * Math.PI), SEAT.z + (STAND.z - SEAT.z) * step - Math.sin(pk * Math.PI) * 0.1);
-    camera.position.set(EYE.x + (Math.random() - 0.5) * 0.03 * sh, EYE.y + (Math.random() - 0.5) * 0.03 * sh + Math.sin(clock * 1.3) * 0.004, EYE.z);
+    const tb = env.turb || 0;   // turbulence: the whole cockpit heaves, the head never rolls
+    camera.position.set(EYE.x + (Math.random() - 0.5) * 0.03 * sh + Math.sin(clock * 8.3) * 0.008 * tb, EYE.y + (Math.random() - 0.5) * 0.03 * sh + Math.sin(clock * 1.3) * 0.004 + (Math.sin(clock * 10.7) + Math.sin(clock * 17.9)) * 0.012 * tb, EYE.z);
     // head tilt: lean the head so the panel in the middle of the view reads upright
     let tiltTo = 0;
     ndc.set(0, 0); ray.setFromCamera(ndc, camera);
@@ -822,7 +837,8 @@
     updateBottle(dt); updateBobble(dt);
     yoke.rotation.z = Math.max(-0.7, Math.min(0.7, -(env.roll || 0) * 3.2 + Math.sin(clock * 2.3) * 0.02));
     skyTex.needsUpdate = true;
-    clouds.forEach((sp) => { sp.position.z += sp.userData.v * dt; if (sp.position.z > -2.2) respawn(sp, false); });
+    // a puff is a flat picture that turns with the head, so it has to be gone before it could reach into the cockpit
+    clouds.forEach((sp) => { sp.position.z += sp.userData.v * dt; const z = sp.position.z; sp.material.opacity = sp.userData.o * Math.max(0, Math.min(1, (-18 - z) / 8)) * Math.max(0, Math.min(1, (z + 62) / 6)); if (z > -18) respawn(sp, false); });
     if (boltT > 0) { boltT -= dt; bolt.visible = boltT > 0 && (boltT > 0.14 || boltT < 0.08); }
     flashL.intensity = Math.max(0, flashL.intensity - dt * 14);
     alarmL.intensity = env.danger ? env.danger * 7 * (0.5 + 0.5 * Math.sin(clock * 9)) : 0;

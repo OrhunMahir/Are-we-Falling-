@@ -6,7 +6,7 @@ Status on 14 November 2026, jam day. Submission is on itch.io (HTML5 zip), a Ros
 
 | | Efe | Orhun |
 |---|---|---|
-| Area | **the inside of the tower**: the 3D tower room and how the handbook sits in it | **everything else**: cockpit, failures, rules, handbook content, lobby and voice, audio, title and end screens, packaging |
+| Area | **the inside of the tower**: the 3D tower room and how the handbook sits in it; later also the handler's basement room (see Planned next, item 6) | **everything else**: cockpit, failures, rules, handbook content, lobby and voice, audio, title and end screens, packaging |
 | Files | `js/tower3d.js`, the `body.t3d` CSS block and the "3D tower room" script block in `manual.html`, `meshy/airliner.glb` | all other files |
 
 Rules that keep the two of us out of each other's way:
@@ -38,6 +38,11 @@ Today the tower room uses it like this: the aircraft comes closer as time runs o
 
 If a new feature needs a new field, Orhun adds it to `st` and writes it into this table.
 
+Two more places use the tower room, so please keep them working when you change it:
+
+- **The landing shot on the pilot's screen.** When the flight is saved, `js/game.js` (`startLandCam`) starts a second copy of the tower room on the pilot's screen with `KKTower.start(canvas)`, calls `setPeek(true)`, sets `state.p` and `state.mx / state.my` directly and sends `ph: 'flight'` followed by `ph: 'landing'`. It is shown zoomed in on the runway (`#landCam` in `css/cockpit3d.css`). So `start`, `setState`, `setPeek`, `stop` and the `state` fields `p`, `mx`, `my` must stay.
+- **The tower looks up by itself.** In `manual.html` the small `onPhase` function raises the head to the window when `ph` becomes `landing`, `won` or `crashed`, and lowers it again for the next flight.
+
 ## Done
 
 - 3D cockpit with about eighty panel slots on the front, ceiling, floor console, side walls and rear wall; a new layout on every flight
@@ -52,6 +57,9 @@ If a new feature needs a new field, Orhun adds it to `st` and writes it into thi
 - 3D tower room: dusk sky, runway lights, the aircraft seen through the windows with smoke that matches the failures
 - Handbook lying on the tower desk, index tabs, page turn, look out of the window
 - Meshy models: dash bobblehead and tower airliner
+- The hand grips and turns the knob in knob mode
+- A wrong switch causes turbulence (the cockpit shakes without rolling, things rattle) and makes the passengers angrier; a wrong action on a failing panel does the same, stronger
+- Landing shot: when the flight is saved the pilot's screen cuts to the tower camera and shows the aircraft touching down, and the tower player's head comes up to the window at the same moment
 - Phone fallback: plain handbook
 
 ## Planned next
@@ -59,11 +67,20 @@ If a new feature needs a new field, Orhun adds it to `st` and writes it into thi
 Nothing below is started. Order to be decided by Orhun.
 
 1. **Crash into the tower.** When the flight fails the aircraft flies into the tower and the tower player sees it coming through the windows. Today it only burns on the field. (Efe: the sequence in `tower3d.js`. Orhun: nothing, `ph: 'crashed'` already arrives.)
-2. **Landing animation for everyone.** When the flight is saved the aircraft lands, and the tower, the pilot and later the flight attendants all watch the same shot. Idea: reuse the tower room scene as an outside camera and play it on every screen. (Efe: the landing shot as a function of the scene. Orhun: showing it on the pilot's end screen and syncing it over the lobby.)
+2. **Landing animation for everyone, second half.** The plumbing is done (see Done): pilot and tower both watch the tower camera when the flight is saved. Still open: a nicer shot. The aircraft is far away and small, there is no flare, no tyre smoke, no camera that follows it. (Efe, inside `tower3d.js`. Later the flight attendants get the same shot.)
 3. **Nicer aircraft textures** on the airliner seen from the tower. (Efe, with a new Meshy model or textures.)
 4. **Three and four players: flight attendants.** Players three and four work in the cabin (small cabin with three players, bigger with four). Passengers grumble, ask for things and stand up, at random, after pilot mistakes and on long flights; the attendants sit them down again. More pilot mistakes mean more chaos. With two players the pilot keeps calming them with announcements; with three or four the attendants do most of it. Passenger voices with ElevenLabs. (Orhun.)
 5. **Cockpit door** that opens and closes once there are attendants. (Orhun.)
-6. **Rosebud version** after the itch.io submission, if the organisers ask for it.
+6. **More optional roles.** Pilot and tower stay the only two seats a flight needs; every other seat is optional and the game adapts to whoever is missing.
+   - **Flight attendants** (item 4). If nobody takes them, the pilot calms the passengers over the PA, as today.
+   - **The bomber**, a villain seat on board who tries to arm a device before the aircraft lands, by solving puzzles of their own.
+   - **The handler**, who sits in a basement somewhere else with the instructions and talks the bomber through it. Same asymmetry as pilot and tower: one sees the thing, the other has the manual.
+   - The handler seat is **locked until someone takes the bomber**. The bomber can be played alone; without a handler the bomber gets different puzzles that can be worked out solo.
+   - **Who wins:** pilot and tower race against the bomber's side. If the device goes off before the aircraft is on the ground, the bomber and the handler win; if the aircraft lands first, the crew wins.
+   - **The handler's room** is a 3D room like the tower: a dim, slightly messy basement with the handler's own handbook lying on the desk, read by looking down, same page turning. (**Efe**, as a sibling of `js/tower3d.js`, for example `js/basement3d.js`, with its own handbook page.)
+   - The bomber's puzzles, the handler's handbook content, the win and lose logic and the lobby screen with locked seats. (Orhun.)
+   - Stretch goal, only if there is time at the very end: the flight attendants can catch or stop the bomber.
+7. **Rosebud version** after the itch.io submission, if the organisers ask for it.
 
 ## Loose ends
 

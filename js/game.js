@@ -91,13 +91,14 @@
     document.removeEventListener('pointerdown', first);
   });
 
-  function toTitle() { show('title'); A.stopAllLoops(0.5); musicOn = false; titleMusic(true); G = null; }
+  function toTitle() { stopLandCam(); show('title'); A.stopAllLoops(0.5); musicOn = false; titleMusic(true); G = null; }
 
   // ---------- game state ----------
   let G = null;
   let controllers = [];
 
   function startFlight() {
+    stopLandCam();
     A.init();
     titleMusic(false);
     A.stopAllLoops(0.3); musicOn = false;
@@ -162,9 +163,10 @@
     $('cabin').className = (u > 0.75 ? 'red' : u > 0.45 ? 'amber' : '') + (cb.complaint ? ' shout' : '');
     $('cabinTxt').textContent = cb.complaint ? 'SHOUTING · USE THE PA' : 'QUIET';
   }
-  function cabinComplain() {
+  function cabinComplain(key) {
     const cb = G.cabin, C = KK.CABIN.COMPLAINTS;
-    let c; do { c = C[Math.floor(Math.random() * C.length)]; } while (c.key === cb.lastKey);
+    let c = key && C.find((x) => x.key === key && x.key !== cb.lastKey);
+    if (!c) do { c = C[Math.floor(Math.random() * C.length)]; } while (c.key === cb.lastKey);
     cb.complaint = c; cb.lastKey = c.key;
     log('Passengers shouting through the door (' + c.key.toLowerCase() + ').');
     cabinListen();
@@ -269,6 +271,7 @@
     A.sfx.clunk(); setTimeout(() => A.sfx.switch(), up ? 700 : 500);
     subtitle(up ? 'You unbuckle and stand up. The front panels are out of reach now.' : 'You drop back into the seat and buckle up.', 2600);
   };
+  K3.hooks.onDecoy = () => wrongSwitch();
   K3.hooks.onFocus = (c) => { $('knobHint').className = c ? 'show' : ''; if (c) A.sfx.click(); };
   K3.hooks.onBlocked = (why) => {
     A.sfx.click();
@@ -305,14 +308,29 @@
     clearTimeout(subTimer); subTimer = setTimeout(() => el.classList.remove('show'), ms || 4000);
   }
 
+  // a wrong switch upsets the aircraft: it shakes for a few seconds and the cabin gets angry
+  function turbulence(power) {
+    if (!G || G.phase !== 'flight') return;
+    G.turb = Math.max(G.turb || 0, 1.3 + power * 2.6); G.turbP = Math.max(G.turbP || 0, 0.35 + power * 0.65);
+    A.sfx.rattle(power);
+  }
+  function wrongSwitch() {
+    if (!G || G.phase !== 'flight') return;
+    const now = performance.now(); if (now - (G.lastWrong || 0) < 900) return; G.lastWrong = now;
+    turbulence(0.35);
+    if (settings.cabin) G.cabin.unrest = Math.min(0.99, G.cabin.unrest + 0.07);
+    G.stress = Math.min(1, G.stress + 0.05);
+    subtitle('WRONG SWITCH · TURBULENCE · THE CABIN IS GETTING ANGRY', 2200);
+    log('Wrong switch: turbulence, the passengers are getting angry.', 'bad');
+  }
   function strike(modName, why, modEl) {
     if (!G || G.phase !== 'flight') return;
     G.strikes++;
     G.timeLeft = Math.max(0.5, G.timeLeft - KK.STRIKE_PENALTY);
     G.stress = Math.min(1, G.stress + 0.34);
-    if (settings.cabin) G.cabin.unrest = Math.min(0.99, G.cabin.unrest + 0.22);
+    if (settings.cabin) { G.cabin.unrest = Math.min(0.99, G.cabin.unrest + 0.3); if (!G.cabin.complaint) setTimeout(() => { if (G && G.phase === 'flight' && !G.cabin.complaint) cabinComplain('SHAKING'); }, 1400); }
     log(modName + ': ' + why, 'bad');
-    A.sfx.strike(); sky.jolt(1); sky.state.damage = G.strikes / KK.MAX_STRIKES;
+    A.sfx.strike(); sky.jolt(1); turbulence(1); sky.state.damage = G.strikes / KK.MAX_STRIKES;
     sky.state.rollTarget = (Math.random() < 0.5 ? -1 : 1) * 0.06 * G.strikes;
     $('cockpit').classList.add('hit'); setTimeout(() => $('cockpit').classList.remove('hit'), 600);
     A.setLoopGain('sfx_panic', 0.08 + G.stress * 0.4);
@@ -343,6 +361,24 @@
     A.play('atc_final', { radio: true, gain: 0.85 });
     subtitle('TOWER: “All systems are stable. Runway two six left is yours. Bring her home.”', 5000);
     $('cockpit').classList.remove('danger'); $('cockpit').classList.add('landing');
+    startLandCam();
+  }
+  // the landing is shown from the tower: the same scene the tower player is looking at
+  let landCam = null;
+  function startLandCam() {
+    stopLandCam();
+    try {
+      if (!window.KKTower || !window.THREE) return;
+      const cam = window.KKTower.start($('landCam')); if (!cam) return;
+      landCam = cam; cam.setPeek(true);
+      const st = { f: G.flight.seed, ph: 'flight', tl: G.total * 0.08, tot: G.total, k: G.strikes, o: [] };
+      cam.setState(st); cam.state.p = 0.9;
+      setTimeout(() => { if (landCam === cam) cam.setState(Object.assign({}, st, { ph: 'landing' })); }, 500);
+    } catch (e) { landCam = null; }
+  }
+  function stopLandCam() {
+    $('cockpit').classList.remove('landcam');
+    if (landCam) { const c = landCam; landCam = null; setTimeout(() => { try { c.stop(); } catch (e) {} }, 1000); }
   }
   function finishLanding() {
     G.phase = 'won';
@@ -350,7 +386,7 @@
     A.stopLoop('sfx_panic', 0.3);
     A.play('sfx_cheer', { bus: 'sfx', gain: 0.9 });
     setTimeout(() => A.play('atc_win', { radio: true, gain: 0.85 }), 1800);
-    setTimeout(() => showEnd(true), 2600);
+    setTimeout(() => showEnd(true), landCam ? 4200 : 2600);
   }
   function crash(why) {
     if (!G || G.phase === 'crashed') return;
@@ -372,7 +408,7 @@
 
   function showEnd(won) {
     const a = G.flight.aircraft;
-    $('cockpit').classList.remove('landing');
+    $('cockpit').classList.remove('landing'); stopLandCam();
     show('end');
     $('end').classList.remove('won', 'lost'); $('end').classList.add(won ? 'won' : 'lost');
     A.stopAllLoops(1.5);
@@ -413,9 +449,13 @@
       titleSky.draw(dt);
     } else if (G && $('cockpit').classList.contains('show')) {
       tick(dt);
-      sky.draw(dt);
+      let tb = 0;
+      if (G.turb > 0) { G.turb -= dt; tb = G.phase === 'flight' ? Math.min(1, G.turb / 0.8) * (G.turbP || 0) : 0; if (tb > 0) sky.jolt(tb * (0.5 + 0.5 * Math.random())); if (G.turb <= 0) G.turbP = 0; }
+      if (landCam) { landCam.state.mx = Math.sin(now / 2300) * 0.03; landCam.state.my = 0; }   // a steady shot, zoomed on the runway
+      const covered = landCam && G.phase !== 'flight' && G.endT > 4.6;   // the tower shot hides the cockpit: no need to draw both
+      if (!covered) sky.draw(dt);
       K3.setEnabled(G.phase === 'flight');
-      K3.frame(dt, { drunk: G.phase === 'flight' ? G.drunk : 0, roll: sky.state.roll, shake: sky.state.shake, altFt: G.phase === 'landing' ? parseInt($('hudAlt').textContent, 10) || 0 : altitude(), danger: G.phase === 'flight' && G.timeLeft < 30 ? 1 : 0, t: G.t, bottle: 1 - G.sips / MAX_SIPS });
+      if (!covered) K3.frame(dt, { drunk: G.phase === 'flight' ? G.drunk : 0, roll: sky.state.roll, shake: sky.state.shake, altFt: G.phase === 'landing' ? parseInt($('hudAlt').textContent, 10) || 0 : altitude(), danger: G.phase === 'flight' && G.timeLeft < 30 ? 1 : 0, t: G.t, bottle: 1 - G.sips / MAX_SIPS, turb: tb });
     }
     requestAnimationFrame(frame);
   }
@@ -465,12 +505,13 @@
       const alt = Math.round(G.landAltStart * Math.pow(1 - k, 2) / 10) * 10;
       $('hudAlt').textContent = String(alt).padStart(5, '0');
       sky.state.alt = 0.1 * (1 - k);
-      if (G.endT > 3.4 && !G.called.land) { G.called.land = true; A.play('gpws_landing', { gain: 0.8 }); $('overlay').className = 'overlay'; }
-      if (G.endT > 7 && !G.called.td) { G.called.td = true; sky.jolt(0.8); if (!A.play('sfx_touchdown', { bus: 'sfx', gain: 0.9 })) A.sfx.clunk(); }
-      if (G.endT > 8.2) finishLanding();
+      if (G.endT > 3.4 && !G.called.land) { G.called.land = true; A.play('gpws_landing', { gain: 0.8 }); $('overlay').className = 'overlay'; if (landCam) $('cockpit').classList.add('landcam'); }
+      const late = landCam ? 2.4 : 0;   // the tower shot needs a little longer to reach the runway
+      if (G.endT > 7 + late && !G.called.td) { G.called.td = true; sky.jolt(0.8); if (!A.play('sfx_touchdown', { bus: 'sfx', gain: 0.9 })) A.sfx.clunk(); }
+      if (G.endT > 8.2 + late) finishLanding();
     }
   }
 
   // test hook
-  window.__kk = { get G() { return G; }, startFlight, settings, crash, K3, toTitle, music: titleMusic };
+  window.__kk = { get G() { return G; }, land, startFlight, settings, crash, K3, toTitle, music: titleMusic };
 })();

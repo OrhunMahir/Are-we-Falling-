@@ -57,6 +57,8 @@
   <section id="cockpit" class="screen">
     <canvas id="view3d" width="1280" height="720"></canvas>
     <canvas id="sky" width="1280" height="236"></canvas>
+    <canvas id="landCam"></canvas>
+    <div id="landTag"><b>● TOWER CAMERA</b> MUNICH · RUNWAY 26 LEFT</div>
     <div id="lidT" class="lid"></div><div id="lidB" class="lid"></div>
     <div id="hud">
       <div class="hud-box hud-alt"><label>ALTITUDE</label><div><span id="hudAlt">24000</span><small>FT</small></div></div>
@@ -110,6 +112,7 @@
 <script src="js/vendor/three.min.js"></script>
 <script src="js/vendor/gltf.min.js"></script>
 <script src="js/models.js"></script>
+<script src="js/tower3d.js"></script>
 <script src="js/cockpit3d.js"></script>
 <script src="js/decoys.js"></script>
 <script src="js/modules3d.js"></script>
