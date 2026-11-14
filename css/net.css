@@ -39,6 +39,7 @@
 .net-room-b:hover:not(:disabled) { background: #1a2029; }
 .net-status { min-height: 20px; margin-top: 12px; font-size: 12.5px; letter-spacing: 1px; color: #ffb000; }
 .net-status.err, .net-note.err { color: #ff6b5f; }
+.net-diag { min-height: 13px; margin-top: 5px; font-size: 10px; letter-spacing: .6px; color: var(--dim); opacity: .85; }
 .net-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
 .net-members { display: flex; flex-direction: column; gap: 6px; }
 .net-m { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid #39414e; border-radius: 7px; background: #10141a; font-size: 13px; letter-spacing: 1px; }
