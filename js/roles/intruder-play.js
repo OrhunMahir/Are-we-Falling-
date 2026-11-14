@@ -78,8 +78,9 @@
   function makePerson(look) {
     const g = new T.Group();
     const add = (geo, c, x, y, z, parent) => { const m = new T.Mesh(geo, lam(c)); m.position.set(x, y, z); (parent || g).add(m); return m; };
-    const legs = new T.Group(); g.add(legs);
-    const legL = add(new T.BoxGeometry(0.13, 0.84, 0.18), look.pants, -0.08, 0.42, 0, legs), legR = add(new T.BoxGeometry(0.13, 0.84, 0.18), look.pants, 0.08, 0.42, 0, legs);
+    // legs swing from the hip: a pivot group at hip height, the leg hangs below it
+    const leg = (x) => { const h = new T.Group(); h.position.set(x, 0.84, 0); g.add(h); add(new T.BoxGeometry(0.13, 0.84, 0.18), look.pants, 0, -0.42, 0, h); add(new T.BoxGeometry(0.14, 0.07, 0.24), 0x16181c, 0, -0.81, -0.03, h); return h; };
+    const legL = leg(-0.08), legR = leg(0.08);
     add(new T.BoxGeometry(0.38, 0.52, 0.23), look.shirt, 0, 1.1, 0);
     const head = new T.Group(); head.position.set(0, 1.5, 0); g.add(head);
     add(new T.SphereGeometry(0.115, 14, 10), look.skin, 0, 0, 0, head);
@@ -95,7 +96,7 @@
   // pose a person: moving swings arms and legs, working raises the arms, tackle throws them forward, seated sinks
   function animPerson(g, dt, st) {
     const u = g.userData; u.t += dt * (st.moving ? 9 : 2);
-    const sw = st.moving ? Math.sin(u.t) * 0.6 : 0;
+    const sw = st.moving ? Math.sin(u.t) * 0.45 : 0;
     u.legL.rotation.x = sw; u.legR.rotation.x = -sw;
     const up = st.tackle ? -1.5 : st.working ? -1.1 + Math.sin(u.t * 4) * 0.25 : 0;
     u.arms[0].rotation.x = up || -sw; u.arms[1].rotation.x = up || sw;
@@ -541,6 +542,7 @@
       pose: () => ({ x: P.x, z: P.z, yaw: P.yaw, seat: P.seat ? P.seat.id : null, place: P.place, working: !!(cur && cur.prog > 0) }),
       setAttendant,
       caught: () => end(false, 'The flight attendant caught you.'),
+      _att: att,   // for testing: the AI attendant's state
       stop() { alive = false; cancelAnimationFrame(raf); snd.stopAll(); ctl.stop(); },
     };
   }
