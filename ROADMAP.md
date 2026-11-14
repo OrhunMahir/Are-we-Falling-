@@ -98,6 +98,8 @@ The earlier idea of a second villain seat (a helper in a basement with a manual 
 
 ### Saboteur (Batu)
 
+On screen this seat is called **INTRUDER**. In the code it stays `saboteur` (`KK.ROLES.saboteur`, `cabin.html?role=saboteur`); `js/roles/saboteur.js` also registers it as `KK.ROLES.intruder`. The pool has 11 tasks with sounds (`audio/int_*.mp3`) and three Meshy models (`js/roles/intruder-models.js`, load it after `js/models.js`).
+
 - Sits in the cabin as one of the passengers.
 - Every flight deals a few **sabotage tasks from a pool, at random**, so no two flights are the same. Examples from Orhun: go into the lavatory and block the ventilation, clog the toilet, stir up the other passengers. Batu designs the pool: what each task is, where it happens, what the player has to do on screen, how long it takes.
 - Can **stand up and sit down in any empty seat**, to get near a task or away from the flight attendant.
