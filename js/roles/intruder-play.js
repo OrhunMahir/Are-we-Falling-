@@ -292,7 +292,9 @@
     const seed = +opts.seed || 1;
     const rng = window.KK && KK.makeRng ? KK.makeRng((seed * 31 + 3) >>> 0) : { int: (a, b) => a + Math.floor(Math.random() * (b - a + 1)) };
     // the mode sets the clock, how many tasks are dealt and how hard each one hits
-    const mode = opts.mode && window.KK && KK.MODES && KK.MODES[opts.mode] ? opts.mode : 'mayday';
+    // no mode given (the lobby): the flight code carries it, 1xxx short hop, 2xxx mayday, 3xxx black box
+    const fromCode = window.KK && KK.codeMode ? KK.codeMode(seed) : null;
+    const mode = opts.mode && window.KK && KK.MODES && KK.MODES[opts.mode] ? opts.mode : fromCode || 'mayday';
     const modeTime = (window.KK && KK.MODES && KK.MODES[mode] && KK.MODES[mode].time) || 420;
     const scale = (pool.effectScale && pool.effectScale[mode]) || modeTime / 240;
     const count = (pool.perMode && pool.perMode[mode]) || pool.perFlight || 4;
@@ -302,7 +304,7 @@
       const def = Object.assign({}, d, { effect: -Math.round(-d.effect * scale) });   // e.g. -3 s becomes -5 s in MAYDAY, -8 s in BLACK BOX
       return { def, done: false, prog: 0, presses: 0, last: '', code: 0 };
     });
-    const S = { clock: opts.clock || modeTime, mode, scale, tasks, suspicion: 0, done: false, door: false, fx: {}, unrest: 0 };
+    const S = { clock: opts.clock || modeTime, mode, scale, tasks, suspicion: 0, done: false, caught: false, door: false, fx: {}, unrest: 0 };
 
     // ---- HUD
     addStyles();
@@ -447,7 +449,7 @@
     // ---- main loop
     let last = performance.now(), alive = true, raf = 0, poseT = 0;
     function end(won, why) {
-      if (S.done) return; S.done = true; stopTaskSound(); snd.stopAll();
+      if (S.done) return; S.done = true; S.caught = !won; stopTaskSound(); snd.stopAll();
       try { document.exitPointerLock(); } catch (e) {}
       $('ixEndH').textContent = won ? 'THE AIRCRAFT IS GOING DOWN' : 'CAUGHT';
       $('ixEndH').style.color = won ? '#ff3b30' : '#3dff8b';
