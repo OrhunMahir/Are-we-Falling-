@@ -521,8 +521,15 @@
     const heat = Math.min(1, 0.18 + fl * 0.25 + drag * 0.85);
     a.emberMat.color.setRGB(0.62 + 0.38 * heat, 0.16 + 0.42 * heat * heat, 0.04 + 0.12 * heat * heat * heat);
     a.glow.material.opacity = 0.22 + 0.28 * heat; a.glow.scale.setScalar(0.009 + 0.009 * heat);
+    // it burns down with every drag: the paper gets shorter, and when nothing is left the ember goes out and the smoke stops
+    const burnt = env.cig != null && env.cig <= 0 && smokeT <= 0;
+    if (env.cig != null) {
+      const k = 0.3 + 0.7 * Math.max(0, Math.min(1, env.cig)), tipZ = 0.018 - 0.062 * k, ch = a.cig.children;
+      ch[0].scale.z = k; ch[0].position.z = 0.018 * (1 - k); a.ember.position.z = tipZ - 0.0015; ch[3].position.z = tipZ - 0.0055; a.glow.position.z = tipZ - 0.003;
+      if (burnt) { a.emberMat.color.setRGB(0.2, 0.19, 0.18); a.glow.material.opacity = 0; }
+    }
     a.wt -= dt;
-    if (a.wt <= 0 && drag < 0.2 && enabled) {   // the thin thread that rises from the ember
+    if (a.wt <= 0 && drag < 0.2 && enabled && !burnt) {   // the thin thread that rises from the ember
       a.wt = 0.2; a.glow.getWorldPosition(a.tip);
       puff(a.tip, (Math.random() - 0.5) * 0.02, 0.06 + Math.random() * 0.03, (Math.random() - 0.5) * 0.02, 0.012, 0.075, 0.26, 2.4);
     }

@@ -265,14 +265,17 @@
     subtitle((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + d.title + ' · ' + sign + ' SECONDS', 4200);
     log((sab ? 'Sabotage in the cabin: ' : 'The flight attendant: ') + String(d.title).toLowerCase() + ' (' + sign + ' s).');
   }
-  // ---------- the ashtray: a drag clears the head, but the smoke stays in the cockpit for a while ----------
+  // ---------- the ashtray: a drag buys a little time and clears the head, but the smoke stays in the cockpit for a while, and the cigarette burns down ----------
   const DRAG_SMOKE = 0.3, SMOKE_MAX = 1.6, SMOKE_CLEAR = 40;   // SMOKE_CLEAR: seconds for one full unit of smoke to drift away
+  const MAX_DRAGS = 5, DRAG_SECONDS = 5;
   K3.hooks.onSmoke = () => {
     if (!G || G.phase !== 'flight') return false;
+    if (G.cigs >= MAX_DRAGS) { subtitle('The cigarette is burned down.', 2200); return false; }
     G.cigs++; G.smoke = Math.min(SMOKE_MAX, G.smoke + DRAG_SMOKE); G.drunk = Math.max(0, G.drunk - 0.8);
+    G.timeLeft = Math.min(G.total, G.timeLeft + DRAG_SECONDS);
     A.sfx.lighter(); setTimeout(() => A.sfx.exhale(), 1500);
-    subtitle(G.smoke > 1.05 ? 'YOU CAN BARELY SEE THE PANELS · let it clear' : G.smoke > 0.6 ? 'A DRAG · the cockpit is getting hazy' : 'A DRAG · steadier head, thicker air', 2800);
-    log('The captain had a smoke (' + G.cigs + ').');
+    subtitle('A DRAG · +' + DRAG_SECONDS + ' SECONDS · ' + (G.cigs >= MAX_DRAGS ? 'that was the last of it' : G.smoke > 1.05 ? 'you can barely see the panels' : G.smoke > 0.6 ? 'the cockpit is getting hazy' : 'steadier head, thicker air'), 3000);
+    log('The captain had a smoke (' + G.cigs + ' of ' + MAX_DRAGS + ').');
     return true;
   };
   let blurNow = -1, hazeNow = -1;
@@ -507,7 +510,7 @@
       const covered = landCam && G.phase !== 'flight' && G.endT > 4.6;   // the tower shot hides the cockpit: no need to draw both
       if (!covered) sky.draw(dt);
       K3.setEnabled(G.phase === 'flight');
-      if (!covered) K3.frame(dt, { drunk: G.phase === 'flight' ? G.drunk : 0, roll: sky.state.roll, shake: sky.state.shake, altFt: G.phase === 'landing' ? parseInt($('hudAlt').textContent, 10) || 0 : altitude(), danger: G.phase === 'flight' && G.timeLeft < 30 ? 1 : 0, t: G.t, bottle: 1 - G.sips / MAX_SIPS, turb: tb, smoke: G.phase === 'flight' ? G.smoke : 0 });
+      if (!covered) K3.frame(dt, { drunk: G.phase === 'flight' ? G.drunk : 0, roll: sky.state.roll, shake: sky.state.shake, altFt: G.phase === 'landing' ? parseInt($('hudAlt').textContent, 10) || 0 : altitude(), danger: G.phase === 'flight' && G.timeLeft < 30 ? 1 : 0, t: G.t, bottle: 1 - G.sips / MAX_SIPS, turb: tb, smoke: G.phase === 'flight' ? G.smoke : 0, cig: 1 - G.cigs / MAX_DRAGS });
     }
     requestAnimationFrame(frame);
   }
