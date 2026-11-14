@@ -45,7 +45,11 @@
 
   KK.ROLES.saboteur = KK.ROLES.intruder = {
     seat: 'INTRUDER',
-    perFlight: 4,                       // tasks dealt per flight; maybe 3 / 4 / 5 by mode
+    perFlight: 4,                       // fallback when no mode is known (cabin.html uses this)
+    // Longer modes deal more tasks, and every task takes more time off, in the same ratio as the flight time
+    // (KK.MODES: short 4:00, mayday 7:00, black box 10:00 -> x1, x1.75, x2.5). Task counts follow the failures: 3 / 5 / 7.
+    perMode: { short: 3, mayday: 5, blackbox: 7 },
+    effectScale: { short: 1, mayday: 1.75, blackbox: 2.5 },
     controls: { walk: 'WASD', interact: 'E', natural: 'Q', look: 'mouse' },
     models: {
       vest: 'intruder_vest',            // the bomb strapped to the chest, seen when looking down

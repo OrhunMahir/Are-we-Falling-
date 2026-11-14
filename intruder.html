@@ -7,15 +7,20 @@
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; user-select: none; -webkit-user-select: none; }
   #cab { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  #ixTop { position: absolute; left: 16px; top: 14px; font: 12px ui-monospace, Menlo, monospace; letter-spacing: 2px; color: #8491a3; background: rgba(8,11,16,.8); border: 1px solid #39414e; border-radius: 6px; padding: 10px 14px; }
+  #ixTop { position: absolute; left: 16px; top: 14px; font: 12px ui-monospace, Menlo, monospace; letter-spacing: 2px; color: #8491a3; background: rgba(8,11,16,.8); border: 1px solid #39414e; border-radius: 6px; padding: 10px 14px; z-index: 5; }
   #ixTop b { color: #ff3b30; }
+  #ixTop a { color: #d6dde8; margin-left: 10px; text-decoration: none; border-bottom: 1px solid #39414e; }
+  #ixTop a.on { color: #3dff8b; border-color: #3dff8b; }
 </style>
 </head>
 <body>
 <!-- The INTRUDER seat on its own test page (Batu). Uses Orhun's cabin (js/cabin3d.js) unchanged.
-     Open on a static server: intruder.html, add ?seed=1234 for the same passengers and tasks every time. -->
+     intruder.html?mode=short|mayday|blackbox     the game mode: 3 / 5 / 7 tasks, each one hitting x1 / x1.75 / x2.5
+     &seed=1234                                     the same passengers and tasks every time
+     &attendant=player                              4 players: a second flight attendant played on another screen
+                                                    (talks over KKLink.local('test'), a BroadcastChannel between tabs) -->
 <canvas id="cab"></canvas>
-<div id="ixTop"><b>INTRUDER</b> · ARE WE FALLING? · WORK IN PROGRESS</div>
+<div id="ixTop"><b>INTRUDER</b> · MODE <a id="m-short" href="?mode=short">SHORT HOP</a><a id="m-mayday" href="?mode=mayday">MAYDAY</a><a id="m-blackbox" href="?mode=blackbox">BLACK BOX</a></div>
 <script src="js/vendor/three.min.js"></script>
 <script src="js/vendor/gltf.min.js"></script>
 <script src="js/rules.js"></script>
@@ -27,11 +32,15 @@
 (function () {
   'use strict';
   const q = new URLSearchParams(location.search);
+  const mode = ['short', 'mayday', 'blackbox'].indexOf(q.get('mode')) >= 0 ? q.get('mode') : 'mayday';
+  document.getElementById('m-' + mode).className = 'on';
   const seed = +q.get('seed') || 1000 + Math.floor(Math.random() * 9000);
-  const cabin = window.KKCabin && KKCabin.start(document.getElementById('cab'), { seed, role: 'saboteur', seat: q.get('seat') });
+  const canvas = document.getElementById('cab');
+  const cabin = window.KKCabin && KKCabin.start(canvas, { seed, role: 'saboteur', seat: q.get('seat') });
   if (!cabin) { document.body.insertAdjacentHTML('beforeend', '<p style="color:#fff">No 3D on this device.</p>'); return; }
-  const play = KKIntruder.start(cabin, { seed, canvas: document.getElementById('cab'), seat: cabin.player.seat && cabin.player.seat.id });
-  window.__intruder = { cabin, play, seed };
+  const link = q.get('attendant') === 'player' ? KKLink.local(q.get('room') || 'test') : null;
+  const play = KKIntruder.start(cabin, { seed, mode, canvas, link, seat: cabin.player.seat && cabin.player.seat.id });
+  window.__intruder = { cabin, play, seed, mode };
 })();
 </script>
 </body>
