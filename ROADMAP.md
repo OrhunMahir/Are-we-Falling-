@@ -104,6 +104,8 @@ The earlier idea of a second villain seat (a helper in a basement with a manual 
 
 On screen this seat is called **INTRUDER**. In the code it stays `saboteur` (`KK.ROLES.saboteur`, `cabin.html?role=saboteur`); `js/roles/saboteur.js` also registers it as `KK.ROLES.intruder`. The pool has 11 tasks with sounds (`audio/int_*.mp3`) and three Meshy models (`js/roles/intruder-models.js`, load it after `js/models.js`).
 
+**Playable now on its own page: `intruder.html`** (static server, `?seed=1234` for a fixed deal). `js/roles/intruder-play.js` (`KKIntruder.start(cabin, { seed })`) sits on top of `js/cabin3d.js` through its public object only: first-person W A S D walking with mouse look (pointer lock), tasks done with E (hold), Q+E (mash) or a Q/E code, effects (turbulence and panic through `setState`, blackout, smoke and dropped masks as screen overlays, the cockpit door through `setDoor`), the chest bomb seen when looking down, and a flight attendant who patrols the aisle and fills a SUSPICION bar when she sees loud work. Orhun: to put the seat into the real game, start `KKIntruder` on the cabin in the intruder seat and read `play.state.clock` changes (or replace the stand-in clock with the real one).
+
 - Sits in the cabin as one of the passengers.
 - Every flight deals a few **sabotage tasks from a pool, at random**, so no two flights are the same. Examples from Orhun: go into the lavatory and block the ventilation, clog the toilet, stir up the other passengers. Batu designs the pool: what each task is, where it happens, what the player has to do on screen, how long it takes.
 - Can **stand up and sit down in any empty seat**, to get near a task or away from the flight attendant.
