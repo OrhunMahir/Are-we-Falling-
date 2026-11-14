@@ -88,7 +88,7 @@ A flight needs only two seats, **pilot** and **tower**. The other two are option
 |---|---|---|---|---|
 | Pilot | yes | cockpit | fix the failures before the time runs out | Orhun |
 | Tower | yes | tower room | read the handbook to the pilot | Orhun (handbook), Efe (tower room) |
-| Saboteur | optional | cabin, among the passengers | make the aircraft go down | **Batu** |
+| Intruder | optional | cabin, among the passengers | make the aircraft go down | **Batu** |
 | Flight attendant | optional | cabin | keep the cabin calm and the saboteur busy | **Efe** |
 
 The earlier idea of a second villain seat (a helper in a basement with a manual of their own) is **cancelled**. The fourth seat is the flight attendant.
