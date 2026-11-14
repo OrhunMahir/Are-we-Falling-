@@ -27,7 +27,7 @@ Rules that keep us out of each other's way:
 
 The tower room does not know the game. It only receives a small state object, so both sides can change freely as long as this stays the same.
 
-`window.KKTower.start(canvas)` returns `{ setState(st), state, setPeek(bool), stop() }`.
+`window.KKTower.start(canvas, opts)` returns `{ setState(st), state, setPeek(bool), stop() }`. `opts` is optional: `{ view: 'outside' }` films the same scene from outside cameras (chase, runway side, a shot of the tower) instead of the controller's seat, for end screens or the cabin seats later.
 
 The game (pilot side, `js/net.js`) sends `st` twice a second; the tower view passes it into the handbook frame with `postMessage({ awf: 1, st })`:
 
@@ -40,14 +40,14 @@ The game (pilot side, `js/net.js`) sends `st` twice a second; the tower view pas
 | `s`, `n` | failures solved, failures in total |
 | `o` | ids of the failures still open: `breakers`, `fire`, `radio`, `hyd`, `intercom`, `gear`, `xpdr`, `keys` |
 
-Today the tower room uses it like this: the aircraft comes closer as time runs out; flame and dark smoke while `fire` is open or `k` is 2 or more; white mist while `hyd` is open; flickering lights while `breakers` is open; a fireball on `crashed`; touchdown and roll-out on `landing` and `won`. Without a link it plays a demo loop.
+Today the tower room uses it like this: the aircraft comes closer as time runs out; flame and dark smoke while `fire` is open or `k` is 2 or more; white mist while `hyd` is open; flickering lights while `breakers` is open. On `crashed` it banks round and flies into the tower windows (4 to 7 s), then the impact plays in the cab. On `landing` and `won` it flies a curve down to the runway and touches down **6.5 s after the phase starts** (so it lines up with the touchdown sound the pilot screen plays at 7 s), then brakes to a stop. Without a link it plays a demo loop.
 
 If a new feature needs a new field, Orhun adds it to `st` and writes it into this table.
 
 Two more places use the tower room, so please keep them working when you change it:
 
 - **The landing shot on the pilot's screen.** When the flight is saved, `js/game.js` (`startLandCam`) starts a second copy of the tower room on the pilot's screen with `KKTower.start(canvas)`, calls `setPeek(true)`, sets `state.p` and `state.mx / state.my` directly and sends `ph: 'flight'` followed by `ph: 'landing'`. It is shown zoomed in on the runway (`#landCam` in `css/cockpit3d.css`). So `start`, `setState`, `setPeek`, `stop` and the `state` fields `p`, `mx`, `my` must stay.
-- **The tower looks up by itself.** In `manual.html` the small `onPhase` function raises the head to the window when `ph` becomes `landing`, `won` or `crashed`, and lowers it again for the next flight.
+- **The tower looks up by itself.** On `landing`, `won` and `crashed` the tower room turns the head to the aircraft on its own (`tower3d.js`), and `manual.html` wraps `setState` so the handbook is put down (`body.endview`) whatever sends the state; it comes back with the next flight. This replaces the earlier `onPhase` helper.
 
 ## Done
 
@@ -66,6 +66,11 @@ Two more places use the tower room, so please keep them working when you change 
 - The hand grips and turns the knob in knob mode
 - A wrong switch causes turbulence (the cockpit shakes without rolling, things rattle) and makes the passengers angrier; a wrong action on a failing panel does the same, stronger
 - Landing shot: when the flight is saved the pilot's screen cuts to the tower camera and shows the aircraft touching down, and the tower player's head comes up to the window at the same moment
+- Crash into the tower: the aircraft banks round and hits the cab windows, the glass shatters, the cab burns, glass and blood on the controller's screen, the controller stands up, staggers and collapses, fade to black
+- Nicer landing: curved approach, flare, tyre smoke, a small bounce, braking roll-out; the head follows the aircraft; touchdown at 6.5 s on every screen
+- Outside cameras for the tower scene (`view: 'outside'`) and a tower body that is seen from outside
+- Handbook: read pages pile up over the clip like a notepad and come back down when you go back; the handbook is put down by itself at the end of a flight
+- The old flat desk in the peek view is gone: one wooden desk from the window to the controller
 - Phone fallback: plain handbook
 - The aircraft cabin, first version, on a page of its own (`cabin.html`): nine rows of seats with passengers, aisle, galley, lavatory, cockpit door, walking, sitting down in any free seat, and a test runner that deals the tasks of a role from `js/roles/`
 
@@ -73,8 +78,7 @@ Two more places use the tower room, so please keep them working when you change 
 
 Nothing below is started. Order to be decided by Orhun.
 
-1. **Crash into the tower.** When the flight fails the aircraft flies into the tower and the tower player sees it coming through the windows. Today it only burns on the field. (Efe: the sequence in `tower3d.js`. Orhun: nothing, `ph: 'crashed'` already arrives.)
-2. **Landing animation for everyone, second half.** The plumbing is done (see Done): pilot and tower both watch the tower camera when the flight is saved. Still open: a nicer shot. The aircraft is far away and small, there is no flare, no tyre smoke, no camera that follows it. (Efe, inside `tower3d.js`. Later the flight attendants get the same shot.)
+1. ~~Crash into the tower~~ and 2. ~~the nicer landing shot~~ are done (see Done). Orhun may want the crash on the pilot's end screen too: `KKTower.start(canvas, { view: 'outside' })` plus the same `st` shows it from outside.
 3. **Nicer aircraft textures** on the airliner seen from the tower. (Efe, with a new Meshy model or textures.)
 4. **The aircraft cabin, second half** (Orhun). The room exists (see Done and [The cabin](#the-cabin-first-version-is-in)). Still open: the two seats in the lobby, dealing the tasks from the flight code inside the real game, applying `effect` to the real clock, showing the other players in the cabin, telling the pilot and the tower what happened.
 5. **The saboteur seat** (Batu) and **the flight attendant seat** (Efe, after items 1 to 3). See [The four seats](#the-four-seats).
@@ -179,7 +183,6 @@ Places, numbers and the field names above are a first proposal, not final.
 
 - Try the online lobby on two real computers over the internet, and check microphone permission inside the itch.io embed.
 - The recorded voice lines still use the old "Kara Kutu" callsign and the placard shows flight numbers starting with "KK".
-- The peek view of the tower still shows the old flat desk next to the new wooden one.
 
 ## Rules of the jam
 
