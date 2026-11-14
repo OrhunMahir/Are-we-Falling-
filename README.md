@@ -73,7 +73,7 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 | `classic.html` | the first 2D version of the cockpit, kept as a fallback | nobody, leave it |
 | `js/vendor/` | three.js r159, PeerJS, QR code, bundled GLTF loader | do not edit |
 
-See [ROADMAP.md](ROADMAP.md) for what is done, what is planned and how the work is split.
+See [ROADMAP.md](ROADMAP.md) for what is done, what is planned and how the work is split. Planned next: two optional seats in the cabin, a **saboteur** (Batu) whose sabotage shortens the time to impact, and a **flight attendant** (Efe) whose work buys the pilot time.
 
 ## 3D models (Meshy)
 
