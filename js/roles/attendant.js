@@ -27,9 +27,10 @@
               when the player starts on the task (this one IS read, see anim() in cabin.html).
    fx 'nocalm': every finished flight attendant task calms the passengers a little (js/game.js); a task with
               fx: [{ type: 'nocalm' }] does not.
-   Voice lines exist in audio/extra/ (att_calm, att_sit, att_stop, att_masks, att_cockpit, att_got, each as _a and _b).
-   The cabin page plays `sound` from audio/ only, so they are not wired yet: move the chosen takes to audio/ and
-   add `sound: 'att_calm'` and so on. */
+     sound    the voice line in audio/ that plays when the task is finished (this one IS read by the cabin page).
+   Voice lines (ElevenLabs, take _a of each, copied from audio/extra/ to audio/): att_calm, att_sit, att_masks,
+   att_cockpit. They were matched to the tasks by their file names, nobody has checked the wording against the
+   task yet. att_stop and att_got are used by the chase in intruder-play.js. Tasks without a line stay silent. */
 (function (root) {
   'use strict';
   const KK = root.KK = root.KK || {};
@@ -77,6 +78,7 @@
         effect: 2,
         clears: ['masks', 'panic'],
         once: true,
+        sound: 'att_masks',
       },
       {
         id: 'device', undoes: 'bomb',
@@ -86,6 +88,7 @@
         input: 'hold', seconds: 6,
         effect: 3,
         clears: ['panic'],
+        sound: 'att_calm',
       },
       {
         id: 'rumour', undoes: 'rumour',
@@ -95,6 +98,7 @@
         input: 'hold', seconds: 5,
         effect: 2,
         clears: ['panic'],
+        sound: 'att_calm',
       },
       {
         id: 'bells', undoes: 'calls',
@@ -113,6 +117,7 @@
         input: 'hold', seconds: 4,
         effect: 2,
         clears: ['block', 'turbulence'],
+        sound: 'att_sit',
       },
       {
         id: 'exit', undoes: 'exit',
@@ -123,6 +128,7 @@
         effect: 3,
         clears: ['turbulence', 'panic'],
         once: true,
+        sound: 'att_sit',
       },
       {
         id: 'oven', undoes: 'oven',
@@ -142,6 +148,7 @@
         effect: 3,
         clears: ['door'],
         once: true,
+        sound: 'att_cockpit',
       },
       // ---------- on its own ----------
       {
