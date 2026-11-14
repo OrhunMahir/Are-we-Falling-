@@ -141,9 +141,13 @@
   // deal the tasks of this role from the flight code, so every screen gets the same ones
   const pool = (window.KK && KK.ROLES && KK.ROLES[role]) || { perFlight: 0, tasks: [] };
   const rng = KK.makeRng((seed * 31 + (role === 'attendant' ? 7 : 3)) >>> 0);
+  const mk = (def) => ({ def, done: false, prog: 0, idx: 0, last: '' });
+  // A pool whose tasks answer to something (`undoes`, the flight attendant's) is not dealt at random: the list starts
+  // with the `always` tasks only and the others are opened one by one with openTask() when their trouble turns up.
+  const reactive = pool.tasks.some((t) => t.undoes);
   const deck = pool.tasks.slice();
   for (let i = deck.length - 1; i > 0; i--) { const j = rng.int(0, i); const t = deck[i]; deck[i] = deck[j]; deck[j] = t; }
-  const tasks = deck.slice(0, pool.perFlight || 3).map((def) => ({ def, done: false, prog: 0, idx: 0, last: '' }));
+  const tasks = (reactive ? pool.tasks.filter((t) => t.always) : deck.slice(0, pool.perFlight || 3)).map(mk);
 
   const NAMES = { seat: 'ANY SEAT', aisle: 'AISLE', lavatory: 'LAVATORY', galley: 'GALLEY', door: 'COCKPIT DOOR' };
   const fmt = (s) => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -152,10 +156,21 @@
   let clock = embed ? 0 : 420, phase = embed ? 'intro' : 'flight', cur = null, eDown = false, toastT = 0, lastAt = '';
   function paint() {
     $('list').innerHTML = tasks.length ? tasks.map((t) => '<div class="task' + (t.done ? ' done' : '') + (t === cur ? ' here' : '') + '"><h4>' + esc(t.def.title) + '<span>' + sgn(t.def.effect) + ' s</span></h4><p>' + esc(t.def.brief) + '</p><em>' + (t.done ? 'DONE' : '▸ ' + (NAMES[t.def.place] || esc(t.def.place))) + '</em></div>').join('')
+      : reactive ? '<div class="task"><p>All quiet in the cabin. Keep your eyes open.</p></div>'
       : '<div class="task"><p>No task pool for this seat yet. Add tasks to js/roles/' + role + '.js.</p></div>';
     cabin.setMarks(tasks.filter((t) => !t.done).map((t) => t.def.place));
   }
   function toast(txt) { $('toast').textContent = txt; $('toast').classList.add('show'); toastT = 2.8; }
+  // puts a task of the pool on the list (by its id). A task that is still open stays as it is; a finished one comes
+  // back, unless it is `once`. Returns the entry, or null when nothing was opened.
+  function openTask(id) {
+    const def = pool.tasks.find((t) => t.id === id); if (!def) return null;
+    let t = tasks.find((x) => x.def === def);
+    if (t) { if (!t.done || def.once) return null; t.done = false; t.prog = 0; t.idx = 0; t.last = ''; }
+    else { t = mk(def); tasks.push(t); }
+    paint(); where();
+    return t;
+  }
   function where() {
     const a = cabin.at();
     $('whereT').textContent = a.place === 'seat' ? 'SEAT ' + a.seat : a.place === 'moving' ? 'WALKING…' : (NAMES[a.place] || a.place);
@@ -233,7 +248,7 @@
     if (cur.prog >= cur.def.seconds - 1e-6) finish(cur);
   }, 50);
   paint(); where();
-  window.__cabin = { cabin, tasks, seed, role, embed, get clock() { return clock; }, get phase() { return phase; } };
+  window.__cabin = { cabin, tasks, openTask, seed, role, embed, get clock() { return clock; }, get phase() { return phase; } };
   }
 })();
 </script>
