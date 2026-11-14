@@ -103,20 +103,32 @@
     g.userData = { head, arms, legL, legR, t: 0 };
     return g;
   }
-  // give the cabin's own passengers a face and, for about half of them, long hair (the cabin builds them, we decorate)
+  // replace the cabin's passengers with figures of the attendant's quality: the cabin keeps animating its own
+  // (now hidden) passengers, and every frame each new figure copies its head and arm movement
+  const SKINS = [0xf0c8a4, 0xd9a47c, 0xb07a52, 0x8a5a3a, 0xf4d6bc], HAIRS = [0x1c1612, 0x3a2a1c, 0x6b4a2a, 0xb9a27a, 0x8a8a8a, 0x101010, 0x9a3a1a];
+  const SHIRTS = [0xb23a3a, 0x3a6ab2, 0x3f8f5a, 0xc9a13a, 0x7a4aa8, 0xd9d9d9, 0x2f3540, 0xc76a2f, 0x4aa3a8, 0xd46a9a], PANTS = [0x23283a, 0x3a3f4a, 0x4a3a2c, 0x1a1d24, 0x5a6a8a];
   function dressPassengers(scene) {
-    let i = 0;
-    scene.traverse((o) => {
-      const u = o.userData; if (!u || !u.head || !u.arms || !u.head.isObject3D || u.__dressed) return;
-      u.__dressed = true; i++;
-      const h = u.head, hairMesh = h.children[1], hairC = hairMesh && hairMesh.material ? hairMesh.material.color.getHex() : 0x2a1c12;
-      const add = (geo, c, x, y, z) => { const m = new T.Mesh(geo, lam(c)); m.position.set(x, y, z); h.add(m); return m; };
-      add(new T.BoxGeometry(0.026, 0.034, 0.03), 0xd9a47c, 0, -0.02, -0.115);                            // nose
-      add(new T.BoxGeometry(0.05, 0.012, 0.01), 0x7a3a34, 0, -0.06, -0.104);                              // mouth
-      [-1, 1].forEach((s) => add(new T.BoxGeometry(0.045, 0.01, 0.01), hairC, s * 0.042, 0.045, -0.106)); // brows
-      const female = ((i * 7919) % 10) < 5;
-      if (female) { add(new T.BoxGeometry(0.24, 0.28, 0.07), hairC, 0, -0.08, 0.09); [-1, 1].forEach((s) => add(new T.BoxGeometry(0.03, 0.24, 0.14), hairC, s * 0.115, -0.05, 0.02)); }
-      else if (i % 4 === 0) add(new T.BoxGeometry(0.18, 0.06, 0.03), hairC, 0, -0.085, -0.095);         // a beard now and then
+    const pairs = []; let i = 0;
+    const olds = [];
+    scene.traverse((o) => { const u = o.userData; if (o.parent === scene && u && u.head && u.arms && u.head.isObject3D && !u.__mine) olds.push(o); });
+    olds.forEach((o) => {
+      i++; const r = (n) => ((i * 7919 + n * 104729) % 9973) / 9973;
+      const female = r(1) < 0.5;
+      const look = { female, shirt: SHIRTS[Math.floor(r(2) * SHIRTS.length)], pants: PANTS[Math.floor(r(3) * PANTS.length)], skin: SKINS[Math.floor(r(4) * SKINS.length)], hair: HAIRS[Math.floor(r(5) * HAIRS.length)], beard: !female && r(6) < 0.25, bun: female && r(7) < 0.25, lips: female ? 0xb8434a : null };
+      const p = makePerson(look); p.userData.__mine = true;
+      p.position.copy(o.position); p.rotation.copy(o.rotation); p.position.y = -0.3;
+      p.userData.legL.rotation.x = p.userData.legR.rotation.x = -1.35;              // sitting: thighs forward
+      scene.add(p); o.visible = false;
+      pairs.push({ o, p });
+    });
+    return pairs;
+  }
+  function followPassengers(pairs) {
+    pairs.forEach(({ o, p }) => {
+      const a = o.userData, b = p.userData;
+      b.head.rotation.copy(a.head.rotation);
+      b.arms[0].rotation.x = -a.arms[0].rotation.x; b.arms[1].rotation.x = -a.arms[1].rotation.x;   // angry passengers throw their arms up
+      p.position.y = -0.3 + (o.position.y || 0);
     });
   }
   // pose a person: moving swings arms and legs, working raises the arms, tackle throws them forward, seated sinks
@@ -133,7 +145,7 @@
   // ---------------------------------------------------------------- effects that live in the cabin
   function makeWorldFx(scene) {
     const W = { scene, lights: [], smoke: null, masks: null, trolley: null, planted: [] };
-    dressPassengers(scene);
+    W.pax = dressPassengers(scene);
     scene.traverse((o) => { if (o.isLight) W.lights.push({ l: o, base: o.intensity }); });
     // smoke: soft grey sprites that drift up and along the cabin
     const sc = document.createElement('canvas'); sc.width = sc.height = 64; const g = sc.getContext('2d');
@@ -158,7 +170,7 @@
     // the same masks on every passenger's face once they have pulled them down
     W.faces = [];
     const faceCup = new T.CylinderGeometry(0.052, 0.04, 0.07, 12);
-    scene.traverse((o) => { const u = o.userData; if (u && u.head && u.arms && u.head.isObject3D) { const f = new T.Mesh(faceCup, lam(0xf2d024)); f.rotation.x = Math.PI / 2; f.position.set(0, -0.03, -0.12); f.visible = false; u.head.add(f); W.faces.push({ f, delay: 0.8 + Math.random() * 2.2 }); } });
+    W.pax.forEach(({ p }) => { const f = new T.Mesh(faceCup, lam(0xf2d024)); f.rotation.x = Math.PI / 2; f.position.set(0, -0.04, -0.13); f.visible = false; p.userData.head.add(f); W.faces.push({ f, delay: 0.8 + Math.random() * 2.2 }); });
     W.maskT = -1;
     // call buttons: a blue lamp over every row that blinks while the bells ring
     W.calls = new T.Group(); W.calls.visible = false; scene.add(W.calls);
@@ -201,6 +213,7 @@
   }
   function updateWorldFx(W, fx, t) {
     if (!W) return;
+    if (W.pax) followPassengers(W.pax);
     const dark = fx.blackout > 0 ? 0.07 : 1;
     W.lights.forEach((L) => { if (dark < 1) L.l.intensity = L.base * dark; else if (L.l.intensity < L.base * 0.2) L.l.intensity = L.base; });
     const sk = fx.smoke > 0 ? Math.min(1, fx.smoke / 6) : 0, su = W.smoke.userData;

@@ -342,7 +342,7 @@
     B(0.9, 0.4, 1.26, 0, 0.2, -0.235, dark);               // pedestal body
     B(1.4, 0.03, 1.3, -0.3, 2.223, -0.639, dark).rotation.x = -0.698; B(1.4, 0.03, 0.68, -0.3, 2.645, 0.2, dark);
     // seats
-    B(0.5, 0.12, 0.5, 0.72, 0.45, 0.25, seat); B(0.5, 0.7, 0.09, 0.72, 0.8, 0.52, seat); B(0.14, 0.45, 0.14, 0.72, 0.2, 0.25, dark);
+    B(0.5, 0.12, 0.5, 0.72, 0.45, 0.66, seat); B(0.5, 0.7, 0.09, 0.72, 0.8, 0.93, seat); B(0.14, 0.45, 0.14, 0.72, 0.2, 0.66, dark);   // slid back on its rails: its back used to hide the right console
     B(0.5, 0.12, 0.5, -0.72, 0.45, 0.3, seat); B(0.14, 0.45, 0.14, -0.72, 0.2, 0.3, dark);
     B(0.46, 0.1, 0.46, 0.5, 0.45, 2.0, seat); B(0.12, 0.45, 0.12, 0.5, 0.2, 2.0, dark);
     // thrust levers on the pedestal's front edge (decor)
@@ -404,8 +404,15 @@
     const cig = new T.Group();
     cig.add(new T.Mesh(new T.CylinderGeometry(0.0042, 0.0042, 0.062, 10).rotateX(Math.PI / 2).translate(0, 0, -0.013), lam('#f3f0e8')));
     cig.add(new T.Mesh(new T.CylinderGeometry(0.0044, 0.0044, 0.024, 10).rotateX(Math.PI / 2).translate(0, 0, 0.03), lam('#c9853a')));
-    const ember = new T.Mesh(new T.SphereGeometry(0.0048, 8, 6), new T.MeshBasicMaterial({ color: '#ff6a1a', fog: false })); ember.position.z = -0.045; cig.add(ember);
-    const rest = new T.Vector3(home.x + 0.034, home.y + 0.031, home.z + 0.022); cig.position.copy(rest); cig.rotation.set(0.28, 0.75, 0); scene.add(cig);
+    // the burning end: a thin glowing band under a grey ash tip, and a small soft halo that breathes
+    const emberMat = new T.MeshBasicMaterial({ color: '#d94a12' });
+    const ember = new T.Mesh(new T.CylinderGeometry(0.0041, 0.0042, 0.0035, 12).rotateX(Math.PI / 2), emberMat); ember.position.z = -0.0455; cig.add(ember);
+    const ashTip = new T.Mesh(new T.CylinderGeometry(0.0032, 0.004, 0.0045, 12).rotateX(Math.PI / 2), lam('#6d6862')); ashTip.position.z = -0.0495; cig.add(ashTip);
+    const gc = document.createElement('canvas'); gc.width = gc.height = 64; const gx = gc.getContext('2d');
+    const gg = gx.createRadialGradient(32, 32, 0, 32, 32, 32); gg.addColorStop(0, 'rgba(255,200,120,1)'); gg.addColorStop(0.18, 'rgba(255,120,40,0.75)'); gg.addColorStop(0.5, 'rgba(255,70,10,0.18)'); gg.addColorStop(1, 'rgba(255,60,0,0)'); gx.fillStyle = gg; gx.fillRect(0, 0, 64, 64);
+    const glow = new T.Sprite(new T.SpriteMaterial({ map: new T.CanvasTexture(gc), transparent: true, depthWrite: false, blending: T.AdditiveBlending, fog: false, opacity: 0.5 }));
+    glow.position.z = -0.047; glow.scale.setScalar(0.016); cig.add(glow);
+    const rest = new T.Vector3(home.x + 0.034, home.y + 0.031, home.z + 0.022); cig.position.copy(rest); cig.rotation.set(0.28, 0.75, 0); scene.add(cig);   // NB: the stub must stay above the dish so the hand can pinch it
     const restQ = cig.quaternion.clone();
     const pc = document.createElement('canvas'); pc.width = pc.height = 64; const x = pc.getContext('2d');
     const gr = x.createRadialGradient(32, 32, 2, 32, 32, 31); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
@@ -414,9 +421,81 @@
     const puffs = []; for (let i = 0; i < 40; i++) { const sp = mk(); sp.userData = { life: 1, max: 1, v: new T.Vector3(), s0: 0, s1: 0, a: 0 }; puffs.push(sp); }
     const haze = []; for (let i = 0; i < 16; i++) { const sp = mk(); const sc = 0.9 + Math.random() * 1.1; sp.scale.set(sc * 1.4, sc, 1); sp.userData = { x: -1.3 + Math.random() * 2.6, y: 0.85 + Math.random() * 1.1, z: -1.0 + Math.random() * 1.2, a: 0.09 + Math.random() * 0.1 }; sp.position.set(sp.userData.x, sp.userData.y, sp.userData.z); haze.push(sp); }
     const proxy = new T.Mesh(new T.CylinderGeometry(0.075, 0.075, 0.13, 8), new T.MeshBasicMaterial()); proxy.position.set(home.x, home.y + 0.05, home.z); proxy.visible = false; scene.add(proxy);
-    const ctrl = { name: 'ASHTRAY · HAVE A SMOKE', x: 0, y: 0, w: 0, h: 0, panel: null, world(out) { return (out || new T.Vector3()).copy(home).setY(home.y + 0.05); }, press() { if (smokeT <= 0 && (!hooks.onSmoke || hooks.onSmoke() !== false)) smokeT = 2.6; } };
+    const ctrl = { name: 'ASHTRAY · HAVE A SMOKE', x: 0, y: 0, w: 0, h: 0, panel: null, world(out) { return (out || new T.Vector3()).copy(home).setY(home.y + 0.05); }, press() { if (smokeT <= 0 && (!hooks.onSmoke || hooks.onSmoke() !== false)) { smokeT = SMOKE_DUR; smokeHand.hide = hands.find((h) => h.ctrl === ctrl) || hands[0]; smokeHand.hide.phase = 'rest'; smokeHand.hide.cb = null; smokeHand.hide.ctrl = null; smokeHand.hide.reachK = 0; } } };
     api.ashtray = ctrl; proxy.userData.ctrl = ctrl; propMeshes.push(proxy); pickMeshes.push(proxy);
-    ashtray = { cig, ember, rest, restQ, puffs, haze, wt: 0, blown: false, tip: new T.Vector3() };
+    ashtray = { cig, ember, emberMat, glow, rest, restQ, puffs, haze, wt: 0, blown: false, tip: new T.Vector3(), held: false };
+    makeSmokeHand();
+  }
+  // ---- the hand that smokes it: index and middle finger around the filter, up to the lips and back
+  const SMOKE_DUR = 3.0;
+  const smokeHand = { g: null, arm: null, hide: null };
+  const _hq = new T.Quaternion(), _hq2 = new T.Quaternion(), _hp = new T.Vector3(), _hp2 = new T.Vector3(), _hb = new T.Matrix4(),
+    _hx = new T.Vector3(), _hy = new T.Vector3(), _hz = new T.Vector3(), CIG_IN_HAND = new T.Vector3(0, 0.03, -0.015);
+  function makeSmokeHand() {
+    // local frame: fingers along +y, the cigarette crosses them along z (ember -z), thumb on -x (it is the left hand)
+    const g = new T.Group(), skin = lam('#d19a76'), nail = lam('#e7c3ad'), cuff = lam('#eef0f3'), gold = lam('#d8b24a');
+    const fing = (x, len, rz) => { const f = new T.Group(); f.position.set(x, 0, 0); f.rotation.z = rz; g.add(f); B(0.0155, len, 0.015, 0, len / 2, 0, skin, f); B(0.011, 0.008, 0.003, 0, len - 0.006, -0.0072, nail, f); return f; };
+    fing(-0.0115, 0.074, 0.11);    // index
+    fing(0.0115, 0.08, -0.11);     // middle: the stub sits between the two
+    [[0.03, 0.0], [0.045, 0.004]].forEach((r) => { B(0.0148, 0.026, 0.02, r[0] - 0.002, 0.004, 0.011 + r[1], skin, g); });   // ring and little finger curled into the palm
+    B(0.072, 0.085, 0.027, 0.006, -0.043, 0.004, skin, g);    // palm
+    const th = B(0.02, 0.055, 0.02, -0.04, -0.03, 0.012, skin, g); th.rotation.z = 0.55; th.rotation.x = -0.3;
+    const cm = new T.Mesh(new T.CylinderGeometry(0.043, 0.046, 0.05, 12), cuff); cm.position.set(0.004, -0.11, 0.004); g.add(cm);
+    [0.135, 0.142].forEach((y) => { const r = new T.Mesh(new T.CylinderGeometry(0.0468, 0.0472, 0.005, 12), gold); r.position.set(0.004, -y, 0.004); g.add(r); });
+    const arm = new T.Mesh(new T.CylinderGeometry(0.044, 0.052, 1, 12).rotateX(Math.PI / 2).translate(0, 0, 0.5), lam('#1a2438'));
+    g.visible = arm.visible = false; scene.add(g); scene.add(arm);
+    smokeHand.g = g; smokeHand.arm = arm;
+  }
+  // a hand pose from where the filter should be (camera space), which way the ember points, and which way the fingers lean
+  function camPose(fx, fy, fz, dx, dy, dz, ux, uy, uz, outP, outQ) {
+    _hz.set(-dx, -dy, -dz).normalize(); _hy.set(ux, uy, uz); _hy.addScaledVector(_hz, -_hy.dot(_hz)).normalize(); _hx.crossVectors(_hy, _hz);
+    _hb.makeBasis(_hx, _hy, _hz); outQ.setFromRotationMatrix(_hb).premultiply(camera.quaternion);
+    // filter end of the stub = CIG_IN_HAND + 0.042 along z
+    outP.set(0, CIG_IN_HAND.y, CIG_IN_HAND.z + 0.042).applyQuaternion(outQ).negate();
+    _v2.set(fx, fy, fz).applyQuaternion(camera.quaternion).add(camera.position); outP.add(_v2);
+  }
+  function pickPose(outP, outQ) {   // fingers down over the dish, pinching the stub where it lies
+    outQ.copy(ashtray.restQ).multiply(_hq2.setFromAxisAngle(_v2.set(0, 0, 1), Math.PI * 0.86));
+    outP.copy(CIG_IN_HAND).applyQuaternion(outQ).negate().add(ashtray.rest);
+  }
+  const _pa = new T.Vector3(), _qa = new T.Quaternion(), _pb = new T.Vector3(), _qb = new T.Quaternion();
+  function seg(u, a, b) { const k = Math.max(0, Math.min(1, (u - a) / (b - a))); return k * k * (3 - 2 * k); }
+  function poseSmokeHand(u) {
+    const a = ashtray, g = smokeHand.g;
+    if (!a.held) { a.held = true; g.add(a.cig); a.cig.position.copy(CIG_IN_HAND); a.cig.quaternion.identity(); }
+    let drag = 0;
+    const mouth = (p, q) => camPose(-0.02, -0.06 + Math.sin(clock * 2) * 0.002, -0.12, -1, 0.5, -0.7, 0.2, 1, -0.5, p, q);
+    const low = (p, q) => camPose(-0.12, -0.11, -0.26, -0.6, 0.4, -1, 0.1, 1, -0.3, p, q);
+    if (u < 0.27) {                      // pinch it and bring it up
+      pickPose(_pa, _qa); mouth(_pb, _qb); const k = seg(u, 0.05, 0.27);
+      g.position.lerpVectors(_pa, _pb, k); g.position.y += Math.sin(k * Math.PI) * 0.06; g.quaternion.slerpQuaternions(_qa, _qb, k);
+    } else if (u < 0.47) {               // the drag
+      mouth(_pb, _qb); drag = seg(u, 0.29, 0.34) * (1 - seg(u, 0.44, 0.47));
+      _hp.set(0, 0, 0.006 * drag).applyQuaternion(camera.quaternion); g.position.copy(_pb).add(_hp); g.quaternion.copy(_qb);
+    } else if (u < 0.65) {               // away from the face, breathe out
+      mouth(_pa, _qa); low(_pb, _qb); const k = seg(u, 0.47, 0.56);
+      g.position.lerpVectors(_pa, _pb, k); g.quaternion.slerpQuaternions(_qa, _qb, k);
+    } else if (u < 0.88) {               // back on the rim
+      low(_pa, _qa); pickPose(_pb, _qb); const k = seg(u, 0.65, 0.88);
+      g.position.lerpVectors(_pa, _pb, k); g.position.y += Math.sin(k * Math.PI) * 0.04; g.quaternion.slerpQuaternions(_qa, _qb, k);
+    } else {                             // let go and pull the hand away
+      if (a.held) dropCig();
+      pickPose(_pa, _qa); low(_pb, _qb); _pb.y -= 0.25; const k = seg(u, 0.88, 1);
+      g.position.lerpVectors(_pa, _pb, k); g.quaternion.slerpQuaternions(_qa, _qb, k * 0.5);
+    }
+    g.visible = true; armTo(g);
+    return drag;
+  }
+  function armTo(g) {   // the sleeve runs from the cuff to a shoulder at the lower left of the view
+    const arm = smokeHand.arm; _hp.set(0.004, -0.15, 0.004); g.localToWorld(_hp);
+    _hp2.set(-0.3, -0.5, 0.12).applyQuaternion(camera.quaternion).add(camera.position);
+    arm.position.copy(_hp2); arm.lookAt(_hp); arm.scale.set(0.8, 0.8, Math.max(0.05, _hp2.distanceTo(_hp))); arm.visible = true;
+  }
+  function dropCig() { const a = ashtray; a.held = false; scene.add(a.cig); a.cig.position.copy(a.rest); a.cig.quaternion.copy(a.restQ); }
+  function endSmoke() {
+    if (ashtray.held) dropCig(); ashtray.blown = false; smokeT = 0;
+    if (smokeHand.g) smokeHand.g.visible = smokeHand.arm.visible = false;
+    const h = smokeHand.hide; smokeHand.hide = null; if (h) h.g.visible = h.arm.visible = h.op > 0.03;
   }
   function puff(pos, vx, vy, vz, s0, s1, a, max) {
     const sp = ashtray.puffs.find((q) => q.userData.life >= q.userData.max); if (!sp) return;
@@ -427,20 +506,24 @@
     const a = ashtray, target = Math.max(0, env.smoke || 0);
     smokeNow += (target - smokeNow) * Math.min(1, dt * 1.5); if (smokeNow < 0.004 && !target) smokeNow = 0;
     scene.fog.density = smokeNow * 0.6;
+    let drag = 0;   // 0..1, how hard the pilot is pulling on it right now
     if (smokeT > 0) {
-      const u = 1 - smokeT / 2.6; smokeT -= dt;
-      let k = u < 0.22 ? u / 0.22 : u < 0.62 ? 1 : Math.max(0, 1 - (u - 0.62) / 0.38); k = k * k * (3 - 2 * k);
-      _v.set(0, 0, -1).applyQuaternion(camera.quaternion); _p.copy(camera.position).addScaledVector(_v, 0.2); _p.y -= 0.045;
-      a.cig.position.lerpVectors(a.rest, _p, k); a.cig.quaternion.slerpQuaternions(a.restQ, camera.quaternion, k);
-      a.ember.scale.setScalar(u > 0.24 && u < 0.5 ? 1.9 : 1);
-      if (!a.blown && u > 0.64) {   // breathe out
-        a.blown = true; _p.copy(camera.position).addScaledVector(_v, 0.24); _p.y -= 0.07;
+      const u = 1 - smokeT / SMOKE_DUR; smokeT -= dt;
+      drag = poseSmokeHand(u);
+      if (!a.blown && u > 0.5) {   // breathe out (game.js plays the exhale 1.5 s after the click)
+        a.blown = true; _v.set(0, 0, -1).applyQuaternion(camera.quaternion); _p.copy(camera.position).addScaledVector(_v, 0.16); _p.y -= 0.07;
         for (let i = 0; i < 9; i++) puff(_p, _v.x * (0.3 + Math.random() * 0.4) + (Math.random() - 0.5) * 0.12, _v.y * 0.3 + 0.03 + Math.random() * 0.06, _v.z * (0.3 + Math.random() * 0.4) + (Math.random() - 0.5) * 0.12, 0.05, 0.45 + Math.random() * 0.35, 0.4, 2.4 + Math.random() * 1.2);
       }
-    } else { a.cig.position.copy(a.rest); a.cig.quaternion.copy(a.restQ); a.ember.scale.setScalar(1); a.blown = false; }
+      if (smokeT <= 0) endSmoke();
+    } else if (a.held) endSmoke(); else a.blown = false;
+    // the ember: a slow uneven smoulder, brighter and hotter while the pilot draws on it
+    const fl = 0.5 + 0.22 * Math.sin(clock * 7.3) + 0.16 * Math.sin(clock * 17.1 + 1.3) + 0.12 * Math.sin(clock * 31.7 + 2.1);
+    const heat = Math.min(1, 0.18 + fl * 0.25 + drag * 0.85);
+    a.emberMat.color.setRGB(0.62 + 0.38 * heat, 0.16 + 0.42 * heat * heat, 0.04 + 0.12 * heat * heat * heat);
+    a.glow.material.opacity = 0.22 + 0.28 * heat; a.glow.scale.setScalar(0.009 + 0.009 * heat);
     a.wt -= dt;
-    if (a.wt <= 0 && smokeT <= 0 && enabled) {   // the thin thread that rises from the ashtray
-      a.wt = 0.2; a.tip.set(0, 0, -0.047).applyQuaternion(a.cig.quaternion).add(a.cig.position);
+    if (a.wt <= 0 && drag < 0.2 && enabled) {   // the thin thread that rises from the ember
+      a.wt = 0.2; a.glow.getWorldPosition(a.tip);
       puff(a.tip, (Math.random() - 0.5) * 0.02, 0.06 + Math.random() * 0.03, (Math.random() - 0.5) * 0.02, 0.012, 0.075, 0.26, 2.4);
     }
     for (let i = 0; i < a.puffs.length; i++) {
@@ -635,6 +718,7 @@
       const thin = 1 - 0.3 * h.reachK;
       h.arm.position.copy(_sh); h.arm.lookAt(_wr); h.arm.scale.set(thin, thin, Math.max(0.05, _sh.distanceTo(_wr)));
       h.armMat.opacity = h.op * (1 - 0.5 * h.reachK); h.armMat.depthWrite = h.armMat.opacity > 0.9;
+      if (smokeHand.hide === h) h.g.visible = h.arm.visible = false;   // this hand is busy with the cigarette
     });
   }
 

@@ -5,7 +5,7 @@
   const KK = window.KK;
   const PREFIX = 'awf1-', MAX = 4;
   // two seats are needed (pilot, tower); the two cabin seats are optional and play in cabin.html
-  const SEATS = ['pilot', 'tower', 'saboteur', 'attendant'], CAB_SEAT = { saboteur: 1, attendant: 1 }, SEAT_NAME = { pilot: 'PILOT', tower: 'TOWER', saboteur: 'SABOTEUR', attendant: 'ATTENDANT' };
+  const SEATS = ['pilot', 'tower', 'saboteur', 'attendant'], CAB_SEAT = { saboteur: 1, attendant: 1 }, SEAT_NAME = { pilot: 'PILOT', tower: 'TOWER', saboteur: 'INTRUDER', attendant: 'ATTENDANT' };
   const ROOMS = ['ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT', 'GOLF', 'HOTEL'];
   const params = new URLSearchParams(location.search);
   const $ = (id) => document.getElementById(id);
@@ -43,7 +43,7 @@
       '<div class="net-cols"><div>' +
         '<label class="net-l">CREW</label><div id="netMembers" class="net-members"></div>' +
         '<label class="net-l">YOUR SEAT</label><div class="net-row"><button id="netPilot" class="net-btn seat">PILOT<small>flies the cockpit</small></button><button id="netTower" class="net-btn seat">TOWER<small>reads the handbook</small></button></div>' +
-        '<div class="net-row"><button id="netSab" class="net-btn seat opt">SABOTEUR<small>optional · in the cabin, against the crew</small></button><button id="netAtt" class="net-btn seat opt">ATTENDANT<small>optional · in the cabin, with the crew</small></button></div>' +
+        '<div class="net-row"><button id="netSab" class="net-btn seat opt">INTRUDER<small>optional · in the cabin, against the crew</small></button><button id="netAtt" class="net-btn seat opt">ATTENDANT<small>optional · in the cabin, with the crew</small></button></div>' +
       '</div><div>' +
         '<label class="net-l">FLIGHT</label><div id="netModes" class="net-modes"></div>' +
         '<label class="net-l">VOICE</label><div class="net-row"><button id="netMic" class="net-btn"></button><button id="netFx" class="net-btn"></button></div>' +

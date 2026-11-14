@@ -49,7 +49,7 @@
 </head>
 <body>
 <canvas id="cab"></canvas>
-<div id="top" class="hud"><b>ARE WE FALLING?</b> · CABIN · WORK IN PROGRESS <a id="rSab" href="?role=saboteur">SABOTEUR</a><a id="rAtt" href="?role=attendant">FLIGHT ATTENDANT</a></div>
+<div id="top" class="hud"><b>ARE WE FALLING?</b> · CABIN · WORK IN PROGRESS <a id="rSab" href="?role=saboteur">INTRUDER</a><a id="rAtt" href="?role=attendant">FLIGHT ATTENDANT</a></div>
 <div id="where" class="hud"><span id="whereT">…</span><small id="hoverT"></small></div>
 <div id="tasks" class="hud"><div id="clock">TIME TO IMPACT <b id="clockT">7:00</b></div><div id="list"></div></div>
 <div id="hold" class="hud"><div id="holdT"></div><div class="bar"><i id="holdB"></i></div></div>
@@ -81,7 +81,7 @@
   const q = new URLSearchParams(location.search);
   const role = q.get('role') === 'attendant' ? 'attendant' : 'saboteur';
   const embed = q.get('embed') === '1';
-  const ROLE_NAME = { saboteur: 'SABOTEUR', attendant: 'FLIGHT ATTENDANT' };
+  const ROLE_NAME = { saboteur: 'INTRUDER', attendant: 'FLIGHT ATTENDANT' };
   if (embed) { document.body.classList.add('embed'); $('top').innerHTML = '<b>' + ROLE_NAME[role] + '</b> · ' + (role === 'saboteur' ? 'BRING THE AIRCRAFT DOWN. DO NOT GET NOTICED.' : 'KEEP THE CABIN CALM. BUY THE PILOT TIME.'); }
   else $(role === 'attendant' ? 'rAtt' : 'rSab').className = 'on';
   const up = (m) => { try { if (embed && window.parent !== window) window.parent.postMessage({ awf: 1, cab: m }, '*'); } catch (e) {} };
@@ -107,7 +107,7 @@
 
   function intruder() {
     document.body.classList.add('sabplay');   // not 'ix': that class belongs to the layer's own boxes
-    const play = KKIntruder.start(cabin, { seed, canvas: $('cab'), seat: cabin.player.seat && cabin.player.seat.id, clock: 420 });
+    const play = KKIntruder.start(cabin, { seed, mode: (KK.codeMode && KK.codeMode(seed)) || 'mayday', canvas: $('cab'), seat: cabin.player.seat && cabin.player.seat.id, clock: 420 });   // the flight code's first digit is the mode
     const sent = {}; let phase = 'intro', lastAt = '', posT = 0, over = false;
     const endCard = (cls, html) => { over = true; document.body.classList.add('over'); $('end').className = 'hud show ' + cls; $('end').innerHTML = html; try { document.exitPointerLock(); } catch (e) {} };
     setInterval(() => {
