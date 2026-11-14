@@ -245,6 +245,7 @@
         else if (f.type === 'panic') G.cabin.unrest = Math.min(1, G.cabin.unrest + (+f.amount || 0.25) * 0.6);
         else if (f.type === 'masks' || f.type === 'smoke') { G.cabin.unrest = Math.min(1, G.cabin.unrest + 0.12); if (!G.cabin.complaint) cabinComplain(); }
         else if (f.type === 'blackout') { K3.lightning(); turbulence(0.3); }
+        else if (f.type === 'calm') G.cabin.unrest = Math.max(0, G.cabin.unrest - (+f.amount || 0.15));   // the flight attendant put an end to a panic
       });
     }, 3000);
     if (!sab && !(d.fx || []).some((f) => f && f.type === 'nocalm')) G.cabin.unrest = Math.max(0, G.cabin.unrest - 0.2);   // the flight attendant calms the cabin with every job done, unless the task says 'nocalm' (the kiss: time only)

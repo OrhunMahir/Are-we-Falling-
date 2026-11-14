@@ -2,32 +2,32 @@
    The flight attendant works in the cabin and undoes what the intruder breaks. Every finished task gives the pilot time.
 
    This file DESCRIBES the task pool and brings one small effect of its own (the kiss, at the end of the file).
-   The game side (Orhun: cabin.html, js/net.js, js/game.js) deals the tasks, runs them and applies them to the flight.
-   Try it:  cabin.html?role=attendant&seed=1006   (this seed deals KISS THE PILOT; any other seed gives another deal)
+   cabin.html runs the tasks, js/net.js carries them through the lobby, js/game.js applies them to the flight.
+   Try it:  cabin.html?role=attendant            malfunctions turn up by themselves, the picker in the test controls
+                                                 plays a sabotage; add &intruder=1 for a cabin without malfunctions
 
    Design rules:
    - One task for every sabotage in js/roles/saboteur.js, and it gives back exactly what that sabotage took
      (the intruder's tasks cost 2 or 3 seconds, so these give 2 or 3). Fixing takes a little longer than breaking.
    - One task that answers to nothing: KISS THE PILOT. It only adds time.
 
-   Fields the cabin page uses today:
+   Fields (all of them are read by cabin.html unless it says otherwise):
      id, title, place, brief, seconds, effect   as in ROADMAP.md (effect = seconds added to the time to impact, positive here)
      input    'hold' (hold E for `seconds`), 'mash' (tap Q and E in turns), 'code' (type the keys in `code`)
-
-   Fields that are a PROPOSAL for the game side (nothing reads them yet; requests for Orhun):
-     undoes   the id of the sabotage this task answers. Wanted: the task is not dealt at random but appears on the
-              attendant's list when the intruder finishes that sabotage. With no intruder on board the same trouble
-              should turn up by itself now and then (as a plain malfunction), so the attendant still has work.
+     undoes   the id of the sabotage this task answers. A pool with `undoes` is not dealt at random: the task comes
+              onto the list when the intruder finishes that sabotage. With no intruder on board the same trouble
+              turns up by itself now and then, as a malfunction that costs no time.
+     always   true: on the list from the start of every flight (the kiss).
+     once     true: can be done only once a flight; without it a finished task comes back when its trouble does.
      clears   the effects of that sabotage that end when the task is done: 'smoke', 'turbulence', 'blackout',
-              'masks', 'panic', 'calls', 'block', 'door' (the same names as `fx` in saboteur.js).
-     spot     where exactly inside the place, for a marker.
-     always   true: on the list on every flight (the kiss).
-     once     true: can be done only once a flight.
-     anim     a screen effect this file plays itself; today only 'kiss'. The cabin page calls KK.ROLES.attendant.play(anim, ctl)
-              when the player starts on the task (this one IS read, see anim() in cabin.html).
-   fx 'nocalm': every finished flight attendant task calms the passengers a little (js/game.js); a task with
-              fx: [{ type: 'nocalm' }] does not.
-     sound    the voice line in audio/ that plays when the task is finished (this one IS read by the cabin page).
+              'masks', 'panic', 'calls', 'block', 'door' (the same names as `fx` in saboteur.js). They end on the
+              intruder's screen, and 'panic' also calms the pilot's passengers a little more.
+     anim     a screen effect this file plays itself, through KK.ROLES.attendant.play(anim, ctl); today only 'kiss'.
+     fx       [{ type: 'nocalm' }]: every finished flight attendant task calms the passengers a little (js/game.js),
+              a task with this does not.
+     sound    the voice line in audio/ that plays when the task is finished.
+     spot     where exactly inside the place. Read by nobody yet (for a marker).
+     perFlight is not used for this pool any more (it has `undoes`).
    Voice lines (ElevenLabs, take _a of each, copied from audio/extra/ to audio/): att_calm, att_sit, att_masks,
    att_cockpit. They were matched to the tasks by their file names, nobody has checked the wording against the
    task yet. att_stop and att_got are used by the chase in intruder-play.js. Tasks without a line stay silent. */

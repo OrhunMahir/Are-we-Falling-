@@ -119,7 +119,15 @@
       if (S.done && !S.caught && !over && phase === 'flight' && S.tasks.every((t) => t.done)) endCard('bad', '<b>EVERY SABOTAGE IS DONE</b>Now wait and see if they still make it.');
     }, 250);
     window.addEventListener('message', (e) => {
-      const d = e.data; if (!d || d.awf !== 1 || !d.st) return;
+      const d = e.data; if (!d || d.awf !== 1) return;
+      // the flight attendant fixed something: what that sabotage started ends here too (`clears` in js/roles/attendant.js).
+      // Done through the layer's public state: fx is a map of effect -> seconds left.
+      if (d.cab && d.cab.role === 'attendant' && d.cab.k === 'task') {
+        const pool = (window.KK && KK.ROLES && KK.ROLES.attendant) || { tasks: [] }, want = String(d.cab.id || '').toLowerCase();
+        const def = pool.tasks.find((t) => String(t.id).toLowerCase() === want), S = play.state;
+        ((def && def.clears) || []).forEach((type) => { if (type === 'panic') S.unrest = Math.max(0, (S.unrest || 0) - 0.3); else if (S.fx && S.fx[type] > 0) S.fx[type] = 0; });
+      }
+      if (!d.st) return;
       const st = d.st;
       if (st.f && +st.f !== seed && (st.ph === 'intro' || st.ph === 'flight')) { location.replace('cabin.html?embed=1&role=' + role + '&seed=' + (+st.f)); return; }
       if (st.tl != null && !play.state.done) play.state.clock = Math.max(1, +st.tl);   // the real time to impact
@@ -187,7 +195,9 @@
     $('clockT').className = t.def.effect > 0 ? 'up' : 'down';
     toast(t.def.title + ' · ' + sgn(t.def.effect) + ' SECONDS');
     if (t.def.sound) { try { const a = new Audio('audio/' + String(t.def.sound).replace(/[^\w]/g, '') + '.mp3'); a.volume = 0.7; const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} }
-    up({ k: 'task', id: t.def.id, title: t.def.title, effect: t.def.effect, fx: t.def.fx || [] });
+    // a task that clears panic also tells the pilot's game to calm the passengers a little more ('calm')
+    const fx = (t.def.fx || []).concat((t.def.clears || []).indexOf('panic') >= 0 ? [{ type: 'calm', amount: 0.15 }] : []);
+    up({ k: 'task', id: t.def.id, title: t.def.title, effect: t.def.effect, fx });
     cur = null; paint(); where();
   }
   // how a task is worked: 'hold' (hold E), 'mash' (alternate Q and E), 'code' (type the keys in `code`)
