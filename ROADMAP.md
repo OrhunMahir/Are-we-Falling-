@@ -10,7 +10,7 @@ Three people work on the game. The plan for the four seats is under [The four se
 |---|---|---|---|
 | Area | **everything else**: cockpit, failures, rules, handbook content, lobby and voice, audio, title and end screens, packaging, and **the aircraft cabin** that the two new seats play in | first **the inside of the tower** (the 3D tower room and how the handbook sits in it), then **the flight attendant** seat | **the saboteur** seat |
 | Files today | all files not listed for someone else | `js/tower3d.js`, the `body.t3d` CSS block and the "3D tower room" script block in `manual.html`, `meshy/airliner.glb` | none yet |
-| New files | `js/cabin3d.js` (the cabin), changes in `js/game.js`, `js/net.js`, `js/rules.js` | `js/roles/attendant.js` | `js/roles/saboteur.js` |
+| New files | `js/cabin3d.js` and `cabin.html` (the cabin, first version is in), later changes in `js/game.js`, `js/net.js`, `js/rules.js` | `js/roles/attendant.js` (starter file is in) | `js/roles/saboteur.js` (starter file is in) |
 
 **Efe's order:** the tower room stays with Efe. He first finishes the open tower work (items 1 to 3 under [Planned next](#planned-next): crash into the tower, the nicer landing shot, the aircraft textures) and moves on to the flight attendant seat when that is done.
 
@@ -67,6 +67,7 @@ Two more places use the tower room, so please keep them working when you change 
 - A wrong switch causes turbulence (the cockpit shakes without rolling, things rattle) and makes the passengers angrier; a wrong action on a failing panel does the same, stronger
 - Landing shot: when the flight is saved the pilot's screen cuts to the tower camera and shows the aircraft touching down, and the tower player's head comes up to the window at the same moment
 - Phone fallback: plain handbook
+- The aircraft cabin, first version, on a page of its own (`cabin.html`): nine rows of seats with passengers, aisle, galley, lavatory, cockpit door, walking, sitting down in any free seat, and a test runner that deals the tasks of a role from `js/roles/`
 
 ## Planned next
 
@@ -75,7 +76,7 @@ Nothing below is started. Order to be decided by Orhun.
 1. **Crash into the tower.** When the flight fails the aircraft flies into the tower and the tower player sees it coming through the windows. Today it only burns on the field. (Efe: the sequence in `tower3d.js`. Orhun: nothing, `ph: 'crashed'` already arrives.)
 2. **Landing animation for everyone, second half.** The plumbing is done (see Done): pilot and tower both watch the tower camera when the flight is saved. Still open: a nicer shot. The aircraft is far away and small, there is no flare, no tyre smoke, no camera that follows it. (Efe, inside `tower3d.js`. Later the flight attendants get the same shot.)
 3. **Nicer aircraft textures** on the airliner seen from the tower. (Efe, with a new Meshy model or textures.)
-4. **The aircraft cabin** (Orhun, first, because both new seats play in it). See [The four seats](#the-four-seats).
+4. **The aircraft cabin, second half** (Orhun). The room exists (see Done and [The cabin](#the-cabin-first-version-is-in)). Still open: the two seats in the lobby, dealing the tasks from the flight code inside the real game, applying `effect` to the real clock, showing the other players in the cabin, telling the pilot and the tower what happened.
 5. **The saboteur seat** (Batu) and **the flight attendant seat** (Efe, after items 1 to 3). See [The four seats](#the-four-seats).
 6. **Cockpit door** that opens and closes once somebody plays in the cabin. (Orhun.)
 7. **Rosebud version** after the itch.io submission, if the organisers ask for it.
@@ -112,15 +113,44 @@ The earlier idea of a second villain seat (a helper in a basement with a manual 
 - **Every finished task gives the pilot extra time.**
 - Stretch goal, only if there is time at the very end: the flight attendant can catch the saboteur.
 
-### The cabin (Orhun, first)
+### The cabin (first version is in)
 
-Both seats need a place to play, so the cabin comes before either of them: rows of seats with passengers, an aisle, a lavatory, a galley, the cockpit door, empty seats to move to. Until it exists Batu and Efe can already do the part that does not depend on it: write their task pools.
+The cabin is a room of its own in `js/cabin3d.js`, and `cabin.html` is a test page for it. It is not linked from the game yet, so it cannot break the submission. **Batu and Efe: this is where you start.**
+
+Open it with a static server (`python3 -m http.server 8765`, then `http://localhost:8765/cabin.html`):
+
+- `cabin.html?role=saboteur` starts in a free seat among the passengers.
+- `cabin.html?role=attendant` starts standing in the galley.
+- `&seed=1234` gives the same passengers and the same deal of tasks every time.
+
+Controls: drag to look, click a free seat or a door to walk there, W and S walk along the aisle, F stands up or sits down in the nearest free seat, hold E to work on a task when you are in the right place. The box in the lower left corner makes the passengers angry, shakes the cabin and opens the cockpit door, for testing.
+
+The page reads `KK.ROLES[role]`, deals `perFlight` tasks, marks their places with a ring on the floor, runs the hold timer and adds `effect` to a stand-in clock. So a task pool can be written and tried today, without waiting for the lobby.
+
+What is in the room: nine rows, seats A to F, about two thirds taken; the galley and the cockpit door at the front; the lavatory (toilet, sink, ventilation grille) at the rear left; a second galley at the rear right.
+
+The cabin does not know the game or the tasks. It offers this, and the game side uses it:
+
+| Call | What it does |
+|---|---|
+| `KKCabin.start(canvas, { seed, role, seat })` | builds the cabin and returns the object below. `seed` is the flight code, so every screen gets the same passengers |
+| `goTo(target)` | walks to `'door'`, `'galley'`, `'aisle'`, `'lavatory'` or to a seat id such as `'4C'` (and sits down) |
+| `at()` | `{ place, seat, x, z }`, `place` is `seat`, `aisle`, `lavatory`, `galley`, `door` or `moving` |
+| `on('arrive' / 'leave' / 'hover', fn)` | events |
+| `seats`, `places` | every seat with `id`, `row`, `taken`; the four places with their position |
+| `setState({ unrest, turb })` | 0 to 1 each: angry passengers, shaking |
+| `setMarks(['lavatory'])` | rings on the floor where something is to do |
+| `setActor(id, { role, at })` | shows another player at a place or in a seat, `null` removes them |
+| `setDoor(true)` | opens or closes the cockpit door |
+| `stop()` | ends it |
+
+Not there yet: the cabin is not in the lobby, the clock on the page is not the real one, the other player on the page is a dummy that does not move, and nobody can interrupt anybody. If a task needs something the cabin does not have (an object to click, a new place, a way to stall the saboteur), tell Orhun.
 
 ### How the three parts fit together
 
 So that three people can work at once without touching the same files, each cabin seat is one file that only describes its tasks, and the game does the rest.
 
-`js/roles/saboteur.js` and `js/roles/attendant.js` each register a pool:
+`js/roles/saboteur.js` and `js/roles/attendant.js` each register a pool. Both files exist as starters with three example tasks each; Batu and Efe replace the examples with their own:
 
 ```js
 KK.ROLES = KK.ROLES || {};
@@ -130,7 +160,7 @@ KK.ROLES.saboteur = {
     {
       id: 'vent',                    // unique in the pool
       title: 'BLOCK THE VENT',       // shown to the player
-      place: 'lavatory',             // where in the cabin: 'seat', 'aisle', 'lavatory', 'galley', 'door'
+      place: 'lavatory',             // where in the cabin: 'seat' (sitting in any seat), 'aisle', 'lavatory', 'galley', 'door'
       brief: 'Go into the lavatory and stuff the ventilation grille.',
       seconds: 14,                   // how long the player is busy with it
       effect: -20,                   // seconds added to the time to impact: negative for the saboteur, positive for the attendant

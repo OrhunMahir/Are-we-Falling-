@@ -52,6 +52,7 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 - Run: open `index.html`. For the QR code and for microphone access use any static server, for example `python3 -m http.server 8765` in this folder, then `http://localhost:8765/`.
 - Package for itch.io: `bash tools/package.sh` writes `arewefalling-itch.zip` with `index.html` at its root. Upload it as an HTML5 game, 1280 by 720, with the fullscreen button enabled.
 - Fixed flight for testing: `index.html?seed=7`.
+- The cabin (work in progress): `cabin.html?role=saboteur` or `cabin.html?role=attendant` on a static server. See [ROADMAP.md](ROADMAP.md), "The cabin".
 
 ## File map
 
@@ -66,6 +67,9 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 | `js/audio.js`, `audio/` | sound engine, voices, music and effects (made with ElevenLabs) | Orhun |
 | `js/sky.js` | the storm outside the cockpit | Orhun |
 | `js/net.js`, `css/net.css` | lobbies, seats, voice chat, state sync | Orhun |
+| `cabin.html`, `js/cabin3d.js` | the aircraft cabin for the two planned seats, on a test page of its own (work in progress, not linked from the game) | Orhun |
+| `js/roles/saboteur.js` | the saboteur's task pool | **Batu** |
+| `js/roles/attendant.js` | the flight attendant's task pool | **Efe** |
 | `manual.html` (handbook content and flight code box) | the tower handbook, generated from `rules.js` | Orhun |
 | `manual.html` (everything under `body.t3d` in the CSS and the "3D tower room" part of the script) | how the handbook sits in the tower room | **Efe** |
 | `js/tower3d.js` | **the 3D tower room**: sky, runway, cab, desk, aircraft, smoke, crash and landing | **Efe** |
