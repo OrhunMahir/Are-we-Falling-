@@ -288,7 +288,7 @@
     raf = requestAnimationFrame(frame);
 
     return {
-      seats, places: PLACES, state: S, player: P, goTo, at, setActor,
+      seats, places: PLACES, state: S, player: P, goTo, at, setActor, scene,
       on(ev, fn) { (subs[ev] = subs[ev] || []).push(fn); },
       stand() { if (P.seat) toggleSeat(); },
       setState(st) { if (!st) return; if (st.unrest != null) S.unrest = clamp(+st.unrest, 0, 1); if (st.turb != null) S.turb = clamp(+st.turb, 0, 1); },

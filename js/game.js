@@ -555,5 +555,11 @@
   }
 
   // test hook
-  window.__kk = { get G() { return G; }, land, startFlight, settings, crash, K3, toTitle, music: titleMusic, cabinTask };
+  // the intruder walked into the cockpit through the open door (or left again): the pilot hears about it
+  function cabinCockpit(inside) {
+    if (!G || G.phase !== 'flight') return;
+    if (inside) { A.sfx.warn(); subtitle('SOMEONE IS IN THE COCKPIT', 4200); log('Somebody came through the cockpit door.'); }
+    else log('The cockpit is clear again.');
+  }
+  window.__kk = { get G() { return G; }, land, startFlight, settings, crash, K3, toTitle, music: titleMusic, cabinTask, cabinCockpit };
 })();

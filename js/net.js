@@ -294,6 +294,9 @@
       const eff = Math.max(-30, Math.min(30, Math.round(+d.effect || 0))), title = tidy(d.title), sab = d.role === 'saboteur';
       if (myRole() === 'pilot') { if (kk() && kk().cabinTask) kk().cabinTask({ role: d.role, id: tidy(d.id, 16), title, effect: eff, fx: Array.isArray(d.fx) ? d.fx.slice(0, 4) : [] }); }
       else if (myRole() === 'tower') toast((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + title + ' · ' + (eff > 0 ? '+' : '') + eff + ' SECONDS', 5000);
+    } else if (d.k === 'cockpit' && d.role === 'saboteur') {   // the intruder walked through the open cockpit door, or left again
+      if (myRole() === 'pilot') { if (kk() && kk().cabinCockpit) kk().cabinCockpit(!!d.in); }
+      else if (myRole() === 'tower') toast(d.in ? 'SOMEONE IS IN THE COCKPIT' : 'THE COCKPIT IS CLEAR AGAIN', 5000);
     }
     try { const f = $('twBook'); if (f && f.contentWindow && CAB_SEAT[myRole()]) f.contentWindow.postMessage({ awf: 1, cab: { k: d.k, role: d.role, at: tidy(d.at, 12).toLowerCase(), id: tidy(d.id, 16) } }, '*'); } catch (e) {}
   }
@@ -304,6 +307,7 @@
     const c = d.cab;
     if (c.k === 'task') act({ t: 'cab', k: 'task', id: tidy(c.id, 16), title: tidy(c.title), effect: Math.max(-30, Math.min(30, Math.round(+c.effect || 0))), fx: Array.isArray(c.fx) ? c.fx.slice(0, 4).map((x) => ({ type: tidy(x && x.type, 12).toLowerCase(), amount: Math.max(0, Math.min(1, +(x && x.amount) || 0)) })) : [] });
     else if (c.k === 'pos') act({ t: 'cab', k: 'pos', at: tidy(c.at, 12) });
+    else if (c.k === 'cockpit') act({ t: 'cab', k: 'cockpit', in: !!c.in });
   });
   function toBook(d) { try { const f = $('twBook'); if (f && f.contentWindow) f.contentWindow.postMessage({ awf: 1, st: d }, '*'); } catch (e) {} }
   function onState(d) {

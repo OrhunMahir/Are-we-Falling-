@@ -115,8 +115,6 @@
       S.tasks.forEach((t) => { if (t.done && !sent[t.def.id]) { sent[t.def.id] = 1; up({ k: 'task', id: t.def.id, title: t.def.title, effect: t.def.effect, fx: t.def.fx || [] }); } });
       let here = P.seat ? P.seat.id : KKIntruder.placeAt(P.x, P.z); if (here === 'cockpit') here = 'door';
       posT += 0.25; if (here !== lastAt || posT > 3) { posT = 0; lastAt = here; up({ k: 'pos', at: here }); }
-      // its end card says the aircraft is going down as soon as the last job is done; the flight is still on, so say that
-      if (S.done && !S.caught && !over && phase === 'flight' && S.tasks.every((t) => t.done)) endCard('bad', '<b>EVERY SABOTAGE IS DONE</b>Now wait and see if they still make it.');
     }, 250);
     window.addEventListener('message', (e) => {
       const d = e.data; if (!d || d.awf !== 1) return;
@@ -133,8 +131,9 @@
       if (st.tl != null && !play.state.done) play.state.clock = Math.max(1, +st.tl);   // the real time to impact
       if (st.ph && st.ph !== phase) {
         phase = st.ph;
-        if (phase === 'landing' || phase === 'won') { endCard('bad', '<b>THE AIRCRAFT LANDED</b>The crew beat you.'); try { play.stop(); } catch (er) {} }
-        else if (phase === 'crashed') { endCard('ok', '<b>AIRCRAFT LOST</b>That was your doing.'); try { play.stop(); } catch (er) {} }
+        // the layer plays the end inside the cabin itself: the dive and the impact, or the landing (older layers: our own card)
+        if (phase === 'landing' || phase === 'won') { if (play.land) play.land(); else { endCard('bad', '<b>THE AIRCRAFT LANDED</b>The crew beat you.'); try { play.stop(); } catch (er) {} } }
+        else if (phase === 'crashed') { if (play.crash) play.crash(); else { endCard('ok', '<b>AIRCRAFT LOST</b>That was your doing.'); try { play.stop(); } catch (er) {} } }
       }
     });
     window.__cabin = { cabin, play, tasks: play.state.tasks, seed, role, embed, get clock() { return play.state.clock; }, get phase() { return phase; } };
