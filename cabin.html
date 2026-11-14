@@ -35,7 +35,7 @@
   #hint { left: 50%; bottom: 14px; transform: translateX(-50%); font-family: var(--mono); font-size: 11.5px; letter-spacing: 1px; color: var(--dim); white-space: nowrap; }
   #hint b { color: var(--txt); font-weight: 400; }
   #dbg { left: 16px; bottom: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--dim); }
-  #dbg label { display: flex; align-items: center; gap: 8px; margin-top: 4px; } #dbg input[type=range] { width: 110px; }
+  #dbg label { display: flex; align-items: center; gap: 8px; margin-top: 4px; } #dbg input[type=range] { width: 110px; } #dbg select { font: inherit; color: #dfe6ee; background: #10141a; border: 1px solid #3a4250; border-radius: 4px; padding: 3px 5px; }
   #holdT kbd.ok { background: var(--green); }
   #end { left: 50%; top: 38%; transform: translate(-50%, -50%); text-align: center; font-size: 20px; letter-spacing: 1px; padding: 22px 34px; display: none; }
   #end.show { display: block; } #end b { display: block; font-size: 40px; letter-spacing: 2px; margin-bottom: 6px; }
@@ -60,6 +60,7 @@
   <label><input id="dUnrest" type="range" min="0" max="100" value="0"> PASSENGERS ANGRY</label>
   <label><input id="dTurb" type="range" min="0" max="100" value="0"> TURBULENCE</label>
   <label><input id="dDoor" type="checkbox"> COCKPIT DOOR OPEN</label>
+  <label id="dSabL" style="display:none"><select id="dSab"></select></label>
 </div>
 
 <script src="js/vendor/three.min.js"></script>
@@ -210,6 +211,24 @@
   $('dTurb').oninput = (e) => cabin.setState({ turb: e.target.value / 100 });
   $('dDoor').onchange = (e) => cabin.setDoor(e.target.checked);
 
+  // a sabotage was finished somewhere in the cabin: the flight attendant gets the task that undoes it
+  function trouble(id) {
+    if (!reactive) return false;
+    const want = String(id || '').toLowerCase();   // the lobby sends ids in capitals
+    const def = pool.tasks.find((t) => t.undoes && String(t.undoes).toLowerCase() === want);
+    const t = def && openTask(def.id);
+    if (t) toast('TROUBLE IN THE CABIN · ' + def.title);
+    return !!t;
+  }
+  // without a lobby: pick a sabotage from the test controls, or let Batu's page do it from a second tab
+  // (intruder.html?attendant=player talks over a BroadcastChannel, see KKLink in js/roles/intruder-play.js)
+  if (reactive && !embed) {
+    const sel = $('dSab'); $('dSabL').style.display = '';
+    sel.innerHTML = '<option value="">A SABOTAGE HAPPENS…</option>' + pool.tasks.filter((t) => t.undoes).map((t) => '<option value="' + esc(t.undoes) + '">' + esc(String(t.undoes).toUpperCase() + ' → ' + t.title) + '</option>').join('');
+    sel.onchange = () => { if (sel.value) trouble(sel.value); sel.value = ''; sel.blur(); };
+    try { const ch = new BroadcastChannel('awf-cabin-' + (q.get('room') || 'test')); ch.onmessage = (e) => { const m = e.data; if (m && m.t === 'task') trouble(m.id); }; } catch (e) {}
+  }
+
   // the lobby sends the flight in: the clock, the mood of the cabin, the end, and where the other cabin seat is
   window.addEventListener('message', (e) => {
     const d = e.data; if (!embed || !d || d.awf !== 1) return;
@@ -228,7 +247,7 @@
     }
     if (d.cab && d.cab.role && d.cab.role !== role) {
       if (d.cab.k === 'pos' && d.cab.at) cabin.setActor('other', { role: d.cab.role, at: d.cab.at });
-      else if (d.cab.k === 'task') toast(d.cab.role === 'saboteur' ? 'SOMETHING IS WRONG IN THE CABIN' : 'THE FLIGHT ATTENDANT IS AT WORK');
+      else if (d.cab.k === 'task') { if (!(d.cab.role === 'saboteur' && trouble(d.cab.id))) toast(d.cab.role === 'saboteur' ? 'SOMETHING IS WRONG IN THE CABIN' : 'THE FLIGHT ATTENDANT IS AT WORK'); }
     }
   });
 
@@ -248,7 +267,7 @@
     if (cur.prog >= cur.def.seconds - 1e-6) finish(cur);
   }, 50);
   paint(); where();
-  window.__cabin = { cabin, tasks, openTask, seed, role, embed, get clock() { return clock; }, get phase() { return phase; } };
+  window.__cabin = { cabin, tasks, openTask, trouble, seed, role, embed, get clock() { return clock; }, get phase() { return phase; } };
   }
 })();
 </script>
