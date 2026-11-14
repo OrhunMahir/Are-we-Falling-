@@ -58,7 +58,7 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 - Tower endings without a pilot: `manual.html?crash=1` plays a burning flight that ends in the tower, `manual.html?land=1` one that is saved. Add `&outside=1` to watch either from the outside cameras.
 - Browsers cache `manual.html` and `js/tower3d.js` hard while you edit them. If a change does not show, reload with Cmd+Shift+R (or clear the cache); inside the online tower seat the handbook is a frame, so reload the game page too.
 
-- The cabin on its own, for trying task pools: `cabin.html?role=saboteur` or `cabin.html?role=attendant` on a static server. See [ROADMAP.md](ROADMAP.md), "The cabin".
+- The cabin on its own, for trying task pools: `cabin.html?role=saboteur` or `cabin.html?role=attendant` on a static server. The flight attendant's page raises malfunctions by itself and has a picker that plays a sabotage (`&intruder=1` turns the malfunctions off). See [ROADMAP.md](ROADMAP.md), "The cabin".
 
 
 ## File map
@@ -76,7 +76,7 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 | `js/net.js`, `css/net.css` | lobbies, seats, voice chat, state sync | Orhun |
 | `cabin.html`, `js/cabin3d.js` | the aircraft cabin where the intruder and the flight attendant play; also a test page of its own | Orhun |
 | `js/roles/saboteur.js` | the intruder's task pool (the seat is called `saboteur` in the code) | **Batu** |
-| `js/roles/attendant.js` | the flight attendant's task pool | **Efe** |
+| `js/roles/attendant.js` | the flight attendant's task pool: one task that undoes each sabotage, opened when the sabotage (or a malfunction) happens, and KISS THE PILOT with its own screen effect | **Efe** |
 | `manual.html` (handbook content and flight code box) | the tower handbook, generated from `rules.js` | Orhun |
 | `manual.html` (everything under `body.t3d` in the CSS and the "3D tower room" part of the script) | how the handbook sits in the tower room | **Efe** |
 | `js/tower3d.js` | **the 3D tower room**: sky, runway, cab, desk, aircraft, smoke, the crash into the tower, the landing, and outside cameras (`KKTower.start(canvas, { view: 'outside' })`) | **Efe** |
