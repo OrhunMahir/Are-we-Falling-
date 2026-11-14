@@ -39,7 +39,7 @@
     if (z > 1.45 && z < 9.3) return x >= -0.28 && x <= 0.28;              // the aisle between the seats
     if (z >= 9.3 && z <= 10.35 && x >= -0.4 && x <= 0.5) return true;     // rear galley
     if (x < -0.4 && x >= -1.38 && z >= 9.55 && z <= 10.45) return true;   // inside the lavatory
-    if (doorOpen && z >= -0.4 && z < 0.55) return x >= -0.3 && x <= 0.3;  // into the cockpit when the door is open
+    if (doorOpen && z >= -1.3 && z < 0.55) return x >= -0.32 && x <= 0.32; // into the cockpit, between the pilots' seats
     return false;
   }
   function placeAt(x, z) {
@@ -142,6 +142,26 @@
     const tb = new T.Mesh(new T.BoxGeometry(0.34, 0.95, 0.75), lam(0xb9bec3)); tb.position.y = 0.5; W.trolley.add(tb);
     const tt = new T.Mesh(new T.BoxGeometry(0.36, 0.04, 0.77), lam(0x6f777f)); tt.position.y = 0.99; W.trolley.add(tt);
     W.trolley.position.set(0, 0, 4.8); W.trolley.rotation.y = 0.3;
+    // the cockpit behind the door: the cabin only paints a black wall there, so hide it and build the room
+    scene.traverse((o) => { if (o.isMesh && o.position.z < -0.5 && o.position.z > -0.7 && o.parent === scene) o.visible = false; });
+    const C = new T.Group(); scene.add(C); W.cockpit = C;
+    const cb = (w, h, d, x, y, z, c, basic) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), basic ? new T.MeshBasicMaterial({ color: c }) : lam(c)); m.position.set(x, y, z); C.add(m); return m; };
+    cb(2.2, 0.04, 1.9, 0, -0.02, -0.95, 0x22262e);                                   // floor
+    cb(0.06, 2.2, 1.9, -1.1, 1.0, -0.95, 0x9aa2aa); cb(0.06, 2.2, 1.9, 1.1, 1.0, -0.95, 0x9aa2aa);   // side walls
+    cb(2.2, 0.06, 1.9, 0, 2.1, -0.95, 0x8b939b);                                      // ceiling with switches
+    for (let i = 0; i < 18; i++) cb(0.05, 0.02, 0.05, -0.8 + (i % 9) * 0.2, 2.06, -0.5 - Math.floor(i / 9) * 0.3, [0x3dff8b, 0xffb000, 0xff3b30, 0x37c0ff][i % 4], true);
+    W.glass = cb(2.0, 0.75, 0.04, 0, 1.45, -1.88, 0x0b1424, true);                   // windshield: the storm outside
+    cb(2.1, 0.12, 0.08, 0, 1.06, -1.86, 0x2c3138);
+    const panel = cb(1.9, 0.5, 0.35, 0, 0.88, -1.6, 0x2c3138);                       // the main panel
+    W.lamps = [];
+    for (let i = 0; i < 24; i++) W.lamps.push(cb(0.07, 0.05, 0.01, -0.8 + (i % 12) * 0.145, 0.95 + Math.floor(i / 12) * 0.12, -1.42, [0x3dff8b, 0xffb000, 0xff3b30, 0x37c0ff][i % 4], true));
+    [-0.45, 0.45].forEach((x) => cb(0.34, 0.24, 0.02, x, 1.0, -1.42, 0x1b6a8f, true));   // two screens
+    cb(0.36, 0.5, 0.7, 0, 0.5, -1.1, 0x23272e);                                       // centre console
+    [-0.62, 0.62].forEach((x) => { cb(0.5, 0.12, 0.5, x, 0.45, -0.85, 0x3a3f48); cb(0.5, 0.75, 0.1, x, 0.85, -0.6, 0x3a3f48); });   // seats
+    W.pilot = makePerson({ shirt: 0xf2f2f2, pants: 0x1a1d24, skin: 0xd9a47c, hair: 0x2a1c12, scarf: 0x1d2c52 });
+    W.pilot.position.set(-0.62, -0.32, -0.85); W.pilot.userData.legL.visible = W.pilot.userData.legR.visible = false; C.add(W.pilot);
+    W.pilot.userData.arms.forEach((a) => { a.rotation.x = -1.0; });
+    const pl = new T.PointLight(0x9fc4ff, 1.2, 3, 1.5); pl.position.set(0, 1.6, -1.0); C.add(pl);
     return W;
   }
   function plant(W, name, x, y, z, size, blink) {
@@ -183,6 +203,10 @@
     if (W.calls.visible) W.calls.children.forEach((l) => { l.visible = Math.sin(t * 5 + l.userData.ph) > -0.2; });
     W.trolley.visible = fx.block > 0;
     W.planted.forEach((g) => { if (g.userData.blink) g.userData.blink.visible = Math.sin(t * 6) > 0; });
+    // the cockpit: warning lamps blink, lightning behind the windshield, the pilot fights the controls
+    if (W.lamps) W.lamps.forEach((l, i) => { l.visible = (i % 3 === 0) ? Math.sin(t * 7 + i) > 0 : true; });
+    if (W.glass) W.glass.material.color.setHex(Math.random() > 0.985 ? 0xc9d8ff : (fx.crash > 0 ? 0x3a2a24 : 0x0b1424));
+    if (W.pilot) { const a = W.pilot.userData.arms, k = fx.crash > 0 ? 1.6 : 1; a[0].rotation.x = -1.0 + Math.sin(t * 9 * k) * 0.15 * k; a[1].rotation.x = -1.0 + Math.cos(t * 8 * k) * 0.15 * k; W.pilot.userData.head.rotation.y = Math.sin(t * 1.3) * 0.3; }
   }
 
   // ---------------------------------------------------------------- shared HUD styles
@@ -312,6 +336,7 @@
     const root = opts.hud || document.body;
     const el = (id, cls, html) => { const d = document.createElement('div'); d.id = id; d.className = 'ix ' + (cls || ''); if (html) d.innerHTML = html; root.appendChild(d); return d; };
     const dark = el('ixDark'), smoke = el('ixSmoke'), warn = el('ixWarn');
+    const flash = el('ixFlash'); flash.style.cssText = 'inset:0;background:#fff;opacity:0;transition:opacity .15s';
     const vestCanvas = document.createElement('canvas'); vestCanvas.id = 'ixVest'; root.appendChild(vestCanvas);
     const hudTasks = el('ixTasks', 'ix-box', '<div id="ixClock">TIME TO IMPACT <b id="ixClockT">7:00</b></div><div id="ixList"></div>');
     if (window.innerWidth < 1000) hudTasks.classList.add('small');
@@ -434,7 +459,13 @@
         if (f.type === 'blackout') { snd.play('int_blackout', 0.8); setTimeout(() => snd.play('int_v_lights', 0.9), 900); setTimeout(() => snd.play('sfx_pax_gasp', 0.6), 1300); }
         if (f.type === 'smoke') { snd.loop('int_alarm', 0.35); if (W) { W.smoke.userData.x = P.place === 'lavatory' ? -1 : 0.3; W.smoke.userData.z = P.z; } setTimeout(() => snd.play('sfx_cough', 0.5), 2500); }
         if (f.type === 'masks') snd.play('sfx_pax_gasp', 0.7);
-        if (f.type === 'door') { S.door = true; cabin.setDoor(true); }
+        if (f.type === 'door') {
+          S.door = true; cabin.setDoor(true);
+          if (!tasks.some((x) => x.def.id === 'switch')) {   // a bonus job waits next to the pilot
+            tasks.push({ def: { id: 'switch', bonus: true, title: 'FLIP THE PILOT\'S SWITCH', place: 'cockpit', brief: 'Walk into the cockpit while the door is open and flip a switch on the overhead panel behind the pilot\'s back.', input: 'hold', seconds: 3, effect: -Math.round(3 * scale), fx: [{ type: 'turbulence', dur: 6 }], noise: 1, sound: 'sfx_sparks' }, done: false, prog: 0, presses: 0, last: '', code: 0 });
+            setTimeout(() => toast('THE COCKPIT DOOR IS OPEN · GET IN BEFORE IT CLOSES', 2.6), 600);
+          }
+        }
         if (f.type === 'calls') snd.play('int_calls', 0.6);
         if (f.type === 'turbulence') snd.play('sfx_turb_rattle', 0.6);
         if (opts.link) opts.link.send({ t: 'fx', type: f.type, dur: f.dur || 8, amount: f.amount || 0 });
@@ -449,10 +480,18 @@
 
     // ---- main loop
     let last = performance.now(), alive = true, raf = 0, poseT = 0;
-    function end(won, why) {
-      if (S.done) return; S.done = true; S.caught = !won; stopTaskSound(); snd.stopAll();
+    // the flight ends in the cabin: the dive, the screams, the impact. The lobby calls play.crash() / play.land().
+    function crash() {
+      if (S.crashT || S.done) return;
+      S.crashT = 0.001; S.fx.crash = 99; S.fx.masks = Math.max(S.fx.masks || 0, 99);
+      snd.play('gpws_pullup', 0.9); snd.play('sfx_engine_fail', 0.8); setTimeout(() => snd.play('sfx_pax_scream', 0.9), 700); snd.loop('int_alarm', 0.4);
+      toast('THE AIRCRAFT IS GOING DOWN', 3);
+    }
+    function land() { end(false, 'The pilot and the tower got the aircraft onto the runway. The device on your chest never went off.', 'THE AIRCRAFT LANDED', false); }
+    function end(won, why, title, caught) {
+      if (S.done) return; S.done = true; S.caught = caught != null ? caught : !won; stopTaskSound(); snd.stopAll();
       try { document.exitPointerLock(); } catch (e) {}
-      $('ixEndH').textContent = won ? 'THE AIRCRAFT IS GOING DOWN' : 'CAUGHT';
+      $('ixEndH').textContent = title || (won ? 'THE AIRCRAFT IS GOING DOWN' : 'CAUGHT');
       $('ixEndH').style.color = won ? '#ff3b30' : '#3dff8b';
       $('ixEndP').textContent = why;
       endEl.classList.add('show');
@@ -467,6 +506,15 @@
       if (S.done) return;
       const walking = ctl.update(dt, S.door);
       const k = ctl.keys;
+      // stepping through the open cockpit door: tell the page and the lobby, so they can switch to Orhun's real cockpit
+      const inCk = P.place === 'cockpit';
+      if (inCk !== !!S.inCockpit) {
+        S.inCockpit = inCk;
+        if (opts.onCockpit) opts.onCockpit(inCk);
+        if (opts.link) opts.link.send({ t: 'cockpit', in: inCk });
+        try { if (window.parent !== window) window.parent.postMessage({ awf: 1, cab: { k: 'cockpit', in: inCk } }, '*'); } catch (e) {}
+        if (inCk) { toast('YOU ARE IN THE COCKPIT', 1.6); snd.play('sfx_cockpit_alarm', 0.4); }
+      }
 
       // which task can be done here
       const here = P.seat ? 'seat' : P.place;
@@ -486,7 +534,8 @@
           cur.done = true; stopTaskSound(); applyFx(cur);
           toast(d.title + ' · ' + d.effect + ' SECONDS', 2.4);
           cur = null; paint();
-          if (tasks.every((t) => t.done)) setTimeout(() => end(true, 'Every sabotage is done and nobody suspected the passenger in seat ' + (opts.seat || '7C') + '.'), 1800);
+          // every job done: the round does NOT end, the intruder stays on board and rides it out with everybody
+          if (!S.allDone && tasks.every((t) => t.done || t.def.bonus)) { S.allDone = true; setTimeout(() => { toast('EVERY SABOTAGE IS DONE · NOW RIDE IT DOWN WITH THEM', 3.5); snd.play('int_v_win', 0.9); }, 1500); }
         }
       } else hudAct.classList.remove('show');
 
@@ -511,14 +560,26 @@
       if (!(S.fx.smoke > 0)) snd.stop('int_alarm');
       if (S.door && !(S.fx.door > 0) && P.z > 0.6) { S.door = false; cabin.setDoor(false); }
       S.unrest = Math.max(0, S.unrest - 0.015 * dt);
-      cabin.setState({ unrest: S.unrest, turb: S.fx.turbulence > 0 ? 0.85 : 0 });
+      // the last 30 seconds the aircraft shakes harder and harder, and in the dive everything goes
+      const dive = S.clock < 30 ? (30 - S.clock) / 30 : 0;
+      cabin.setState({ unrest: S.crashT ? 1 : Math.max(S.unrest, dive * 0.8), turb: S.crashT ? 1 : Math.max(S.fx.turbulence > 0 ? 0.85 : 0, dive * 0.7) });
+      if (S.crashT) {
+        S.crashT += dt;
+        S.fx.blackout = Math.random() > 0.75 ? 0.15 : 0;
+        P.pitch = clamp(P.pitch - 0.12 * dt, -1.2, 1);   // the nose goes down, the floor tilts
+        if (S.crashT > 6.5) {
+          flash.style.opacity = 1; snd.play('sfx_explode_big', 1); snd.play('sfx_crash', 0.9);
+          setTimeout(() => end(true, S.allDone ? 'Every sabotage worked. Nobody walked away, and nobody ever knew it was the passenger in seat ' + (opts.seat || '7C') + '.' : 'The aircraft went down before the crew could save it.', 'AIRCRAFT LOST · YOU WIN'), 900);
+          S.crashT = -1;
+        }
+      }
       dark.style.opacity = S.fx.blackout > 0 ? (W ? 0.35 : 1) : 0;
       smoke.style.opacity = S.fx.smoke > 0 ? Math.min(W ? 0.3 : 0.6, S.fx.smoke / 8) : 0;
 
       // the clock and the toast
       S.clock = Math.max(0, S.clock - dt);
       $('ixClockT').textContent = fmt(S.clock); $('ixClockT').className = S.clock < 60 ? 'down' : '';
-      if (S.clock <= 0) end(true, 'The clock ran out before the aircraft could land.');
+      if (S.clock <= 0 && !S.crashT) crash();
       if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastEl.classList.remove('show'); }
 
       // the chest bomb slides into view when looking down
@@ -542,6 +603,7 @@
       pose: () => ({ x: P.x, z: P.z, yaw: P.yaw, seat: P.seat ? P.seat.id : null, place: P.place, working: !!(cur && cur.prog > 0) }),
       setAttendant,
       caught: () => end(false, 'The flight attendant caught you.'),
+      crash, land,   // the lobby: call these when the flight phase becomes 'crashed' / 'landing' instead of stop()
       _att: att,   // for testing: the AI attendant's state
       stop() { alive = false; cancelAnimationFrame(raf); snd.stopAll(); ctl.stop(); },
     };
