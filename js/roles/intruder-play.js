@@ -72,26 +72,52 @@
   const mats = {};
   const lam = (c) => mats[c] || (mats[c] = T ? new T.MeshLambertMaterial({ color: c }) : null);
   const LOOKS = {
-    attendant: { shirt: 0x1d2c52, pants: 0x1d2c52, scarf: 0xd43a3a, skin: 0xf0c8a4, hair: 0x3a2a1c, bun: true },
-    intruder: { shirt: 0x5b6b4a, pants: 0x2a2f3c, skin: 0xd9a47c, hair: 0x1c1612, cap: 0x7a2a2a },
+    attendant: { female: true, shirt: 0x1d2c52, pants: 0x1d2c52, skirt: 0x1d2c52, scarf: 0xd43a3a, skin: 0xf0c8a4, hair: 0x3a2a1c, bun: true, lips: 0xb8434a },
+    attendant2: { female: false, shirt: 0x1d2c52, pants: 0x1d2c52, tie: 0x2a7ad4, collar: 0xeef0f2, skin: 0xb07a52, hair: 0x101010 },
+    intruder: { shirt: 0x5b6b4a, pants: 0x2a2f3c, skin: 0xd9a47c, hair: 0x1c1612, cap: 0x7a2a2a, beard: true },
   };
+  // a blocky person in the game's chunky low-poly style, with a proper face; female: long hair or a bun, a skirt
   function makePerson(look) {
     const g = new T.Group();
     const add = (geo, c, x, y, z, parent) => { const m = new T.Mesh(geo, lam(c)); m.position.set(x, y, z); (parent || g).add(m); return m; };
     // legs swing from the hip: a pivot group at hip height, the leg hangs below it
-    const leg = (x) => { const h = new T.Group(); h.position.set(x, 0.84, 0); g.add(h); add(new T.BoxGeometry(0.13, 0.84, 0.18), look.pants, 0, -0.42, 0, h); add(new T.BoxGeometry(0.14, 0.07, 0.24), 0x16181c, 0, -0.81, -0.03, h); return h; };
-    const legL = leg(-0.08), legR = leg(0.08);
-    add(new T.BoxGeometry(0.38, 0.52, 0.23), look.shirt, 0, 1.1, 0);
+    const leg = (x) => { const h = new T.Group(); h.position.set(x, 0.84, 0); g.add(h); add(new T.BoxGeometry(0.12, 0.84, 0.17), look.skirt ? look.skin : look.pants, 0, -0.42, 0, h); add(new T.BoxGeometry(0.13, 0.07, 0.24), 0x16181c, 0, -0.81, -0.03, h); return h; };
+    const legL = leg(-0.075), legR = leg(0.075);
+    if (look.skirt) add(new T.BoxGeometry(0.36, 0.3, 0.25), look.skirt, 0, 0.74, 0);
+    add(new T.BoxGeometry(look.female ? 0.34 : 0.4, 0.52, 0.23), look.shirt, 0, 1.1, 0);
+    if (look.collar) add(new T.BoxGeometry(0.12, 0.2, 0.02), look.collar, 0, 1.26, -0.118);
+    if (look.tie) add(new T.BoxGeometry(0.05, 0.24, 0.02), look.tie, 0, 1.22, -0.13);
     const head = new T.Group(); head.position.set(0, 1.5, 0); g.add(head);
-    add(new T.SphereGeometry(0.115, 14, 10), look.skin, 0, 0, 0, head);
-    add(new T.SphereGeometry(0.124, 14, 8, 0, Math.PI * 2, 0, 1.75), look.hair, 0, 0.012, 0.012, head);
-    if (look.bun) add(new T.SphereGeometry(0.07, 10, 8), look.hair, 0, 0.05, 0.13, head);
-    if (look.cap) { add(new T.CylinderGeometry(0.127, 0.127, 0.07, 14), look.cap, 0, 0.09, 0, head); add(new T.BoxGeometry(0.2, 0.02, 0.13), look.cap, 0, 0.065, -0.14, head); }
-    [-1, 1].forEach((s) => add(new T.BoxGeometry(0.026, 0.026, 0.02), 0x16181c, s * 0.042, 0.012, -0.108, head));
-    if (look.scarf) add(new T.BoxGeometry(0.22, 0.07, 0.22), look.scarf, 0, 1.38, 0);
-    const arms = [-1, 1].map((s) => { const a = new T.Group(); a.position.set(s * 0.225, 1.33, 0); add(new T.BoxGeometry(0.09, 0.4, 0.1), look.shirt, 0, -0.19, 0, a); g.add(a); return a; });
+    add(new T.BoxGeometry(0.21, 0.24, 0.21), look.skin, 0, 0, 0, head);                                  // a chunky head
+    add(new T.BoxGeometry(0.23, 0.08, 0.23), look.hair, 0, 0.12, 0.005, head);                           // hair on top
+    add(new T.BoxGeometry(0.23, 0.16, 0.06), look.hair, 0, 0.05, 0.09, head);                            // and at the back
+    if (look.female && !look.bun) { add(new T.BoxGeometry(0.25, 0.32, 0.08), look.hair, 0, -0.06, 0.1, head); [-1, 1].forEach((s) => add(new T.BoxGeometry(0.03, 0.26, 0.16), look.hair, s * 0.12, -0.03, 0.03, head)); }
+    if (look.bun) { add(new T.BoxGeometry(0.13, 0.13, 0.1), look.hair, 0, 0.07, 0.15, head); [-1, 1].forEach((s) => add(new T.BoxGeometry(0.03, 0.17, 0.15), look.hair, s * 0.12, 0.02, 0.01, head)); add(new T.BoxGeometry(0.23, 0.04, 0.03), look.hair, 0, 0.1, -0.1, head); }   // bun, side locks, fringe
+    if (look.cap) { add(new T.BoxGeometry(0.24, 0.07, 0.24), look.cap, 0, 0.15, 0, head); add(new T.BoxGeometry(0.2, 0.02, 0.12), look.cap, 0, 0.12, -0.16, head); }
+    [-1, 1].forEach((s) => { add(new T.BoxGeometry(0.035, 0.035, 0.01), 0xffffff, s * 0.05, 0.02, -0.106, head); add(new T.BoxGeometry(0.02, 0.025, 0.01), 0x16181c, s * 0.05, 0.018, -0.112, head); add(new T.BoxGeometry(0.05, 0.012, 0.01), look.hair, s * 0.05, 0.055, -0.108, head); });   // eyes, brows
+    add(new T.BoxGeometry(0.03, 0.04, 0.03), look.skin, 0, -0.02, -0.118, head);                         // nose
+    add(new T.BoxGeometry(0.06, 0.014, 0.01), look.lips || 0x7a3a34, 0, -0.07, -0.107, head);            // mouth
+    if (look.beard) add(new T.BoxGeometry(0.2, 0.07, 0.03), look.hair, 0, -0.1, -0.1, head);
+    if (look.scarf) add(new T.BoxGeometry(0.2, 0.07, 0.2), look.scarf, 0, 1.38, 0);
+    const arms = [-1, 1].map((s) => { const a = new T.Group(); a.position.set(s * (look.female ? 0.2 : 0.23), 1.33, 0); add(new T.BoxGeometry(0.085, 0.4, 0.1), look.shirt, 0, -0.19, 0, a); add(new T.BoxGeometry(0.08, 0.08, 0.09), look.skin, 0, -0.42, 0, a); g.add(a); return a; });
     g.userData = { head, arms, legL, legR, t: 0 };
     return g;
+  }
+  // give the cabin's own passengers a face and, for about half of them, long hair (the cabin builds them, we decorate)
+  function dressPassengers(scene) {
+    let i = 0;
+    scene.traverse((o) => {
+      const u = o.userData; if (!u || !u.head || !u.arms || !u.head.isObject3D || u.__dressed) return;
+      u.__dressed = true; i++;
+      const h = u.head, hairMesh = h.children[1], hairC = hairMesh && hairMesh.material ? hairMesh.material.color.getHex() : 0x2a1c12;
+      const add = (geo, c, x, y, z) => { const m = new T.Mesh(geo, lam(c)); m.position.set(x, y, z); h.add(m); return m; };
+      add(new T.BoxGeometry(0.026, 0.034, 0.03), 0xd9a47c, 0, -0.02, -0.115);                            // nose
+      add(new T.BoxGeometry(0.05, 0.012, 0.01), 0x7a3a34, 0, -0.06, -0.104);                              // mouth
+      [-1, 1].forEach((s) => add(new T.BoxGeometry(0.045, 0.01, 0.01), hairC, s * 0.042, 0.045, -0.106)); // brows
+      const female = ((i * 7919) % 10) < 5;
+      if (female) { add(new T.BoxGeometry(0.24, 0.28, 0.07), hairC, 0, -0.08, 0.09); [-1, 1].forEach((s) => add(new T.BoxGeometry(0.03, 0.24, 0.14), hairC, s * 0.115, -0.05, 0.02)); }
+      else if (i % 4 === 0) add(new T.BoxGeometry(0.18, 0.06, 0.03), hairC, 0, -0.085, -0.095);         // a beard now and then
+    });
   }
   // pose a person: moving swings arms and legs, working raises the arms, tackle throws them forward, seated sinks
   function animPerson(g, dt, st) {
@@ -107,6 +133,7 @@
   // ---------------------------------------------------------------- effects that live in the cabin
   function makeWorldFx(scene) {
     const W = { scene, lights: [], smoke: null, masks: null, trolley: null, planted: [] };
+    dressPassengers(scene);
     scene.traverse((o) => { if (o.isLight) W.lights.push({ l: o, base: o.intensity }); });
     // smoke: soft grey sprites that drift up and along the cabin
     const sc = document.createElement('canvas'); sc.width = sc.height = 64; const g = sc.getContext('2d');
@@ -158,7 +185,7 @@
     [-0.45, 0.45].forEach((x) => cb(0.34, 0.24, 0.02, x, 1.0, -1.42, 0x1b6a8f, true));   // two screens
     cb(0.36, 0.5, 0.7, 0, 0.5, -1.1, 0x23272e);                                       // centre console
     [-0.62, 0.62].forEach((x) => { cb(0.5, 0.12, 0.5, x, 0.45, -0.85, 0x3a3f48); cb(0.5, 0.75, 0.1, x, 0.85, -0.6, 0x3a3f48); });   // seats
-    W.pilot = makePerson({ shirt: 0xf2f2f2, pants: 0x1a1d24, skin: 0xd9a47c, hair: 0x2a1c12, scarf: 0x1d2c52 });
+    W.pilot = makePerson({ shirt: 0xf2f2f2, pants: 0x1a1d24, skin: 0xd9a47c, hair: 0x2a1c12, tie: 0x1d2c52, cap: 0x1d2c52 });
     W.pilot.position.set(-0.62, -0.32, -0.85); W.pilot.userData.legL.visible = W.pilot.userData.legR.visible = false; C.add(W.pilot);
     W.pilot.userData.arms.forEach((a) => { a.rotation.x = -1.0; });
     const pl = new T.PointLight(0x9fc4ff, 1.2, 3, 1.5); pl.position.set(0, 1.6, -1.0); C.add(pl);
@@ -364,7 +391,7 @@
     hookScene(cabin, canvas, (scene) => {
       W = makeWorldFx(scene);
       attG = makePerson(LOOKS.attendant); scene.add(attG);                                   // the AI attendant, always on board
-      if (remoteAtt) { remG = makePerson(Object.assign({}, LOOKS.attendant, { scarf: 0x2a7ad4, hair: 0x8a5a2a })); remG.visible = false; scene.add(remG); }   // the player attendant (4 players)
+      if (remoteAtt) { remG = makePerson(LOOKS.attendant2); remG.visible = false; scene.add(remG); }   // the player attendant (4 players): a male steward in a suit and tie
     }, () => {
       if (attG) { attG.position.set(att.x, 0, att.z); attG.rotation.y = att.yaw; }
       if (remG) { remG.visible = rem.seen; remG.position.set(rem.x, 0, rem.z); remG.rotation.y = rem.yaw; }
@@ -622,6 +649,6 @@
     },
   };
 
-  window.KKIntruder = { start, walkable, placeAt, util: { snd, hookScene, makePerson, animPerson, LOOKS, makeWorldFx, updateWorldFx, addStyles, fpsControls } };
+  window.KKIntruder = { start, walkable, placeAt, util: { snd, hookScene, makePerson, animPerson, dressPassengers, LOOKS, makeWorldFx, updateWorldFx, addStyles, fpsControls } };
   window.KKLink = KKLink;
 })();
