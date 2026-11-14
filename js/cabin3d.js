@@ -12,6 +12,9 @@
      cabin.setMarks(['lavatory'])         glowing rings on the floor where something is to do
      cabin.setActor('p2', { role, at })   another player: at is a place name or a seat id; null removes
      cabin.setDoor(true)                  cockpit door open or closed
+     cabin.setPass(true)                  this player may walk through the cockpit door: it opens for them, 'cockpit' becomes a place
+     cabin.door()                         how far the cockpit door stands open, 0..1
+     cabin.setPeek(false)                 hides the black wall behind the door (js/cabin-cockpit.js puts the real cockpit there)
      cabin.stop()
 */
 (function () {
@@ -25,6 +28,7 @@
     galley: { x: -0.35, z: 1.02, yaw: -H, pitch: -0.22, label: 'GALLEY' },
     aisle: { x: 0, z: 5.3, yaw: 0, label: 'AISLE' },
     lavatory: { x: -1.0, z: 10.0, yaw: H, label: 'LAVATORY' },
+    cockpit: { x: -0.3, z: -2.14, yaw: 0.6, pitch: -0.42, label: 'COCKPIT' },   // inside, beside the captain's seat (js/cabin-cockpit.js draws the room)
   };
   function mulberry32(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -51,9 +55,9 @@
     };
 
     // ---------------- the tube
-    const shell = new T.Mesh(new T.CylinderGeometry(2, 2, LEN + 0.6, 28, 1, true), new T.MeshLambertMaterial({ color: 0xc9ced2, side: T.BackSide }));
-    shell.rotation.x = H; shell.position.set(0, 0.75, LEN / 2); scene.add(shell);
-    box(4, 0.04, LEN + 0.6, 0, -0.02, LEN / 2, 0x262c3d);                         // carpet
+    const shell = new T.Mesh(new T.CylinderGeometry(2, 2, LEN + 0.36, 28, 1, true), new T.MeshLambertMaterial({ color: 0xc9ced2, side: T.BackSide }));
+    shell.rotation.x = H; shell.position.set(0, 0.75, LEN / 2 + 0.12); scene.add(shell);   // from the cockpit wall (z -0.06) to the tail
+    box(4, 0.04, LEN + 0.36, 0, -0.02, LEN / 2 + 0.12, 0x262c3d);                 // carpet
     box(0.7, 0.006, LEN, 0, 0.003, LEN / 2, 0x363d55);                           // aisle runner
     const floorL = [box(0.03, 0.01, 7.6, -0.36, 0.008, 5.4, basic(0x7dffb0)), box(0.03, 0.01, 7.6, 0.36, 0.008, 5.4, basic(0x7dffb0))];
     box(3.0, 0.05, LEN, 0, 2.13, LEN / 2, 0xd7dadd);                              // ceiling panel
@@ -109,8 +113,8 @@
     // ---------------- front: cockpit wall and door, galley, exit
     const WALL = 0xbcc2c7, METAL = 0x9aa2aa;
     box(1.68, 2.5, 0.08, -1.17, 1.1, 0, WALL); box(1.68, 2.5, 0.08, 1.17, 1.1, 0, WALL); box(0.66, 0.4, 0.08, 0, 2.14, 0, WALL);
-    box(0.9, 2, 0.02, 0, 1, -0.6, basic(0x05080d));                                 // what you see through the open door
-    [[-0.16, 1.2, 0x37c0ff], [0.1, 1.28, 0xffb347], [0.2, 1.12, 0x5dff8a], [-0.05, 1.05, 0xff5a4a]].forEach((d) => box(0.07, 0.04, 0.01, d[0], d[1], -0.58, basic(d[2])));
+    const peek = [box(0.9, 2, 0.02, 0, 1, -0.6, basic(0x05080d))];                  // what you see through the open door when no cockpit is built behind it
+    [[-0.16, 1.2, 0x37c0ff], [0.1, 1.28, 0xffb347], [0.2, 1.12, 0x5dff8a], [-0.05, 1.05, 0xff5a4a]].forEach((d) => peek.push(box(0.07, 0.04, 0.01, d[0], d[1], -0.58, basic(d[2]))));
     const door = new T.Group(); door.position.set(-0.33, 0, 0.03); scene.add(door);
     box(0.66, 1.94, 0.05, 0.33, 0.97, 0, 0x8b939b, door); label('COCKPIT', 0.36, 0.08, '#20262e', '#e8edf2', 0.33, 1.62, 0.03, 0, door);
     const lock = box(0.05, 0.05, 0.02, 0.56, 1.05, 0.035, basic(0xff3b30), door);
@@ -155,6 +159,7 @@
     function spot(at) {
       if (at && typeof at === 'object') return { x: at.x, z: at.z, yaw: at.yaw || 0, seated: false };
       if (seatById[at]) return { x: seatById[at].x, z: seatById[at].z, yaw: 0, seated: true };
+      if (at === 'cockpit') return { x: -0.34, z: -1.25, yaw: -0.35, seated: false };   // the other seat in the cockpit: beside the aisle, so nobody walks through them
       const p = PLACES[at] || PLACES.aisle; return { x: p.x, z: p.z, yaw: p.yaw, seated: false };
     }
     function setActor(id, a) {
@@ -168,6 +173,7 @@
     // ---------------- the player
     const S = { unrest: 0, turb: 0, t: 0 };
     const P = { x: 0, z: 1.0, y: STAND, yaw: 0, pitch: 0, seat: null, place: 'aisle', path: [], dest: null, hold: 0 };
+    let pass = false, knock = 0;   // pass: this player may walk through the cockpit door; knock: seconds the door stays open for them
     const subs = {};
     const emit = (ev, d) => (subs[ev] || []).forEach((fn) => { try { fn(d); } catch (e) { console.error(e); } });
     const moving = () => P.path.length > 0;
@@ -175,6 +181,7 @@
     function goTo(target) {
       const seat = seatById[target], place = !seat && PLACES[target] ? target : null;
       if (!seat && !place) return false;
+      if (place === 'cockpit' && !pass) return false;
       if (seat && (seat.taken || seat === P.seat)) return false;
       const pts = [];
       if (P.seat) pts.push({ x: P.seat.x, z: P.seat.z - 0.3 }, { x: 0, z: P.seat.z - 0.3 });
@@ -189,8 +196,10 @@
     function arrive() {
       const d = P.dest || {}; P.seat = d.seat || null; P.place = d.place || placeAt(); P.dest = null; P.hold = 0;
       emit('arrive', at());
+      if (hover && hover.userData.place) emit('hover', { place: aim(hover.userData.place) });   // at the cockpit door the same click means something else now
     }
-    const placeAt = () => (P.x < -0.3 && P.z > 9.3 ? 'lavatory' : P.z < 0.85 ? 'door' : P.z < 1.4 ? 'galley' : 'aisle');
+    const placeAt = () => (P.x < -0.3 && P.z > 9.3 ? 'lavatory' : P.z < -0.1 ? 'cockpit' : P.z < 0.85 ? 'door' : P.z < 1.4 ? 'galley' : 'aisle');
+    const aim = (pl) => (pl === 'door' && pass && !moving() && P.place === 'door' ? 'cockpit' : pl);   // standing at the cockpit door, a click on it walks in
     function toggleSeat() {
       if (moving()) return;
       if (P.seat) { const s = P.seat; emit('leave', at()); P.seat = null; P.path = [{ x: s.x, z: s.z - 0.3 }, { x: 0, z: s.z - 0.3 }]; P.dest = { place: 'aisle' }; return; }
@@ -221,9 +230,9 @@
         P.yaw += dx * 0.0042; P.pitch = clamp(P.pitch + dy * 0.0042, -1.1, 1.1); P.hold = 1.4;   // P.yaw and P.pitch are the camera's rotation.y and rotation.x
       }
       const h = drag && drag.moved > 6 ? null : hit(e);
-      if (h !== hover) { hover = h; canvas.style.cursor = h ? 'pointer' : 'grab'; emit('hover', h ? (h.userData.seat ? { seat: h.userData.seat.id } : { place: h.userData.place }) : null); }
+      if (h !== hover) { hover = h; canvas.style.cursor = h ? 'pointer' : 'grab'; emit('hover', h ? (h.userData.seat ? { seat: h.userData.seat.id } : { place: aim(h.userData.place) }) : null); }
     };
-    const onUp = (e) => { const d = drag; drag = null; if (d && d.moved <= 6) { const h = hit(e); if (h) goTo(h.userData.seat ? h.userData.seat.id : h.userData.place); } };
+    const onUp = (e) => { const d = drag; drag = null; if (d && d.moved <= 6) { const h = hit(e); if (h) goTo(h.userData.seat ? h.userData.seat.id : aim(h.userData.place)); } };
     const onKey = (e) => { const k = e.key.toLowerCase(); keys[k] = e.type === 'keydown'; if (e.type === 'keydown' && k === 'f' && !e.repeat) toggleSeat(); };
     canvas.addEventListener('pointerdown', onDown); canvas.addEventListener('pointermove', onMove); canvas.addEventListener('pointerup', onUp);
     window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKey);
@@ -240,12 +249,20 @@
 
       // walking
       let heading = null;
+      const ajar = -door.rotation.y / 1.45;   // the cockpit door: 0 closed .. 1 open
       if (moving()) {
         const q = P.path[0], dx = q.x - P.x, dz = q.z - P.z, d = Math.hypot(dx, dz), sp = (Math.abs(dx) > Math.abs(dz) ? 1.1 : 1.9) * dt;
-        if (d <= sp) { P.x = q.x; P.z = q.z; P.path.shift(); if (!moving()) arrive(); } else { P.x += dx / d * sp; P.z += dz / d * sp; if (d > 0.25) heading = Math.atan2(-dx, -dz); }
+        if (pass && q.z < 0.6 && P.z < 1.7) knock = 0.5;                                   // on the way in: the door opens as they come near
+        if (q.z < 0.6 && P.z >= 0.6 && P.z < 0.72 && ajar < 0.8) heading = 0;              // and they wait in front of it until it has swung clear
+        else if (d <= sp) { P.x = q.x; P.z = q.z; P.path.shift(); if (!moving()) arrive(); } else { P.x += dx / d * sp; P.z += dz / d * sp; if (d > 0.25) heading = Math.atan2(-dx, -dz); }
       } else if (!P.seat && Math.abs(P.x) < 0.5 && P.place !== 'lavatory') {
         const f = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0);
-        if (f) { const before = P.place; P.x = 0; P.z = clamp(P.z - Math.cos(P.yaw) * f * 1.9 * dt, 0.6, 10.3); P.place = placeAt(); if (P.place !== before) { emit('leave', { place: before }); emit('arrive', at()); } }
+        if (f) {
+          const before = P.place, step = -Math.cos(P.yaw) * f * 1.9 * dt;
+          if (pass && step < 0 && P.z < 0.75) knock = 0.5;                                 // walking at the cockpit door opens it
+          P.x = 0; P.z = clamp(P.z + step, pass && (P.z < 0.6 || ajar >= 0.8) ? PLACES.cockpit.z : 0.6, 10.3); P.place = placeAt();
+          if (P.place !== before) { emit('leave', { place: before }); emit('arrive', at()); }
+        }
       }
       const seated = P.seat && !moving();
       const eye = seated ? SIT : STAND - (P.z > 1.5 && P.z < 9.25 ? 0.28 * clamp((Math.abs(P.x) - 0.4) / 0.4, 0, 1) : 0);   // duck under the bins
@@ -262,8 +279,10 @@
       const nearLav = Math.hypot(P.x + 0.42, P.z - 10.0) < 0.8 && P.x > -0.85;
       lavDoor.position.z += ((nearLav ? 10.37 : 9.65) - lavDoor.position.z) * Math.min(1, dt * 7);
       occ.material.color.setHex(P.place === 'lavatory' || (P.dest && P.dest.place === 'lavatory') ? 0xff3b30 : 0x35d06a);
-      door.rotation.y += ((doorOpen ? -1.45 : 0) - door.rotation.y) * Math.min(1, dt * 5);
-      lock.material.color.setHex(doorOpen ? 0x35d06a : 0xff3b30);
+      knock = Math.max(0, knock - dt);
+      const swing = doorOpen || (pass && (knock > 0 || P.z < 0.6));   // cracked open by somebody, or this player is walking through
+      door.rotation.y += ((swing ? -1.45 : 0) - door.rotation.y) * Math.min(1, dt * 5);
+      lock.material.color.setHex(swing ? 0x35d06a : 0xff3b30);
 
       // the cabin lives
       bolt -= dt; if (bolt < -4 - Math.random() * 9) bolt = 0.22;
@@ -281,7 +300,7 @@
       }
       const pulse = 1 + Math.sin(S.t * 4) * 0.12;
       Object.keys(marks).forEach((k) => { if (marks[k].visible) marks[k].scale.set(pulse, pulse, 1); });
-      if (hover) { const o = hover; glow.visible = true; glow.position.copy(o.position); const g = o.geometry.parameters; glow.scale.set(g.width + 0.02, g.height + 0.02, g.depth + 0.02); } else glow.visible = false;
+      if (hover && !(hover.userData.place === 'door' && pass && (P.z < 0.6 || (P.dest && P.dest.place === 'cockpit')))) { const o = hover; glow.visible = true; glow.position.copy(o.position); const g = o.geometry.parameters; glow.scale.set(g.width + 0.02, g.height + 0.02, g.depth + 0.02); } else glow.visible = false;
       renderer.render(scene, camera);
     }
     subs.arrive = [function (a) { const yaw = a.place === 'seat' ? 0 : (PLACES[a.place] || {}).yaw; if (yaw != null && a.place !== 'aisle') P.settle = { yaw, pitch: (PLACES[a.place] || {}).pitch || 0, until: S.t + 1.2 }; }];
@@ -294,6 +313,9 @@
       setState(st) { if (!st) return; if (st.unrest != null) S.unrest = clamp(+st.unrest, 0, 1); if (st.turb != null) S.turb = clamp(+st.turb, 0, 1); },
       setMarks(list) { Object.keys(marks).forEach((k) => { marks[k].visible = (list || []).indexOf(k) >= 0; }); },
       setDoor(v) { doorOpen = !!v; },
+      setPass(v) { pass = !!v; },
+      door: () => -door.rotation.y / 1.45,
+      setPeek(v) { peek.forEach((m) => { m.visible = !!v; }); },
       stop() {
         alive = false; cancelAnimationFrame(raf);
         canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointermove', onMove); canvas.removeEventListener('pointerup', onUp);

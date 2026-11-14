@@ -78,6 +78,7 @@ window.addEventListener('keydown', function (e) {
 <script src="js/roles/attendant.js" onerror="void 0"></script>
 <script src="js/cabin3d.js"></script>
 <script src="js/cabin-fit.js" onerror="void 0"></script>
+<script src="js/cabin-cockpit.js" onerror="void 0"></script>
 <script>
 /* The cabin page. Two ways to run it:
    - on its own (cabin.html?role=saboteur): a test page with a stand-in clock and test controls;
@@ -95,6 +96,9 @@ window.addEventListener('keydown', function (e) {
   if (embed) { document.body.classList.add('embed'); $('top').innerHTML = '<b>' + ROLE_NAME[role] + '</b> · ' + (role === 'saboteur' ? 'BRING THE AIRCRAFT DOWN. DO NOT GET NOTICED.' : 'KEEP THE CABIN CALM. BUY THE PILOT TIME.'); }
   else $(role === 'attendant' ? 'rAtt' : 'rSab').className = 'on';
   const up = (m) => { try { if (embed && window.parent !== window) window.parent.postMessage({ awf: 1, cab: m }, '*'); } catch (e) {} };
+  // Who may walk into the cockpit. 'crew': the flight attendant at any time, the intruder only while the door stands cracked
+  // open (Orhun's call, 14.11.). 'open': both, at any time; try it with cabin.html?cockpit=open, or change the default here.
+  const COCKPIT_RULE = q.get('cockpit') === 'open' ? 'open' : 'crew';
 
   // in the lobby the passengers and the tasks come from the flight code, so wait for it
   if (embed && !+q.get('seed')) {
@@ -105,6 +109,7 @@ window.addEventListener('keydown', function (e) {
   const seed = +q.get('seed') || 1000 + Math.floor(Math.random() * 9000);
   const cabin = window.KKCabin && KKCabin.start($('cab'), { seed, role, seat: q.get('seat') });
   if (!cabin) { $('whereT').textContent = 'NO 3D ON THIS DEVICE'; return; }
+  const realCockpit = !!(window.__cockpit && cabin.setPass && cabin.places.cockpit);   // js/cabin-cockpit.js is on board: the room behind the door is the pilot's cockpit
   try { window.focus(); } catch (e) {}
 
   // In the lobby the saboteur seat is played with Batu's first-person layer (js/roles/intruder-play.js):
@@ -123,7 +128,8 @@ window.addEventListener('keydown', function (e) {
     setInterval(() => {
       const S = play.state, P = cabin.player;
       S.tasks.forEach((t) => { if (t.done && !sent[t.def.id]) { sent[t.def.id] = 1; up({ k: 'task', id: t.def.id, title: t.def.title, effect: t.def.effect, fx: t.def.fx || [] }); } });
-      let here = P.seat ? P.seat.id : KKIntruder.placeAt(P.x, P.z); if (here === 'cockpit') here = 'door';
+      let here = P.seat ? P.seat.id : KKIntruder.placeAt(P.x, P.z); if (here === 'cockpit' && !realCockpit) here = 'door';
+      if (COCKPIT_RULE === 'open' && realCockpit && S.fx && !S.done) { S.door = true; S.fx.door = Math.max(S.fx.door || 0, 2); cabin.setDoor(true); }   // 'open': the door never locks for the intruder
       posT += 0.25; if (here !== lastAt || posT > 3) { posT = 0; lastAt = here; up({ k: 'pos', at: here }); }
     }, 250);
     window.addEventListener('message', (e) => {
@@ -167,16 +173,20 @@ window.addEventListener('keydown', function (e) {
   for (let i = deck.length - 1; i > 0; i--) { const j = rng.int(0, i); const t = deck[i]; deck[i] = deck[j]; deck[j] = t; }
   const tasks = (reactive ? pool.tasks.filter((t) => t.always) : deck.slice(0, pool.perFlight || 3)).map(mk);
 
-  const NAMES = { seat: 'ANY SEAT', aisle: 'AISLE', lavatory: 'LAVATORY', galley: 'GALLEY', door: 'COCKPIT DOOR' };
+  const NAMES = { seat: 'ANY SEAT', aisle: 'AISLE', lavatory: 'LAVATORY', galley: 'GALLEY', door: 'COCKPIT DOOR', cockpit: 'COCKPIT' };
+  // with the real cockpit behind the door, KISS THE PILOT is done in there, beside the captain (its `place` in the pool still says 'door')
+  const spotOf = (def) => (realCockpit && def.id === 'kiss' ? 'cockpit' : def.place);
+  if (realCockpit) cabin.setPass(role === 'attendant' || COCKPIT_RULE === 'open');
   const fmt = (s) => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const sgn = (n) => (n > 0 ? '+' : '') + n;
   let clock = embed ? 0 : 420, phase = embed ? 'intro' : 'flight', cur = null, eDown = false, toastT = 0, lastAt = '';
+  let wasCk = false, crackT = 0, otherIn = false, doorWant = false;   // in the cockpit; the door: cracked open by the intruder (seconds left), the other seat inside
   function paint() {
-    $('list').innerHTML = tasks.length ? tasks.map((t) => '<div class="task' + (t.done ? ' done' : '') + (t === cur ? ' here' : '') + '"><h4>' + esc(t.def.title) + '<span>' + sgn(t.def.effect) + ' s</span></h4><p>' + esc(t.def.brief) + '</p><em>' + (t.done ? 'DONE' : '▸ ' + (NAMES[t.def.place] || esc(t.def.place))) + '</em></div>').join('')
+    $('list').innerHTML = tasks.length ? tasks.map((t) => '<div class="task' + (t.done ? ' done' : '') + (t === cur ? ' here' : '') + '"><h4>' + esc(t.def.title) + '<span>' + sgn(t.def.effect) + ' s</span></h4><p>' + esc(t.def.brief) + '</p><em>' + (t.done ? 'DONE' : '▸ ' + (NAMES[spotOf(t.def)] || esc(spotOf(t.def)))) + '</em></div>').join('')
       : reactive ? '<div class="task"><p>All quiet in the cabin. Keep your eyes open.</p></div>'
       : '<div class="task"><p>No task pool for this seat yet. Add tasks to js/roles/' + role + '.js.</p></div>';
-    cabin.setMarks(tasks.filter((t) => !t.done).map((t) => t.def.place));
+    cabin.setMarks(tasks.filter((t) => !t.done).map((t) => spotOf(t.def)));
   }
   function toast(txt) { $('toast').textContent = txt; $('toast').classList.add('show'); toastT = 2.8; }
   // puts a task of the pool on the list (by its id). A task that is still open stays as it is; a finished one comes
@@ -194,8 +204,10 @@ window.addEventListener('keydown', function (e) {
     $('whereT').textContent = a.place === 'seat' ? 'SEAT ' + a.seat : a.place === 'moving' ? 'WALKING…' : (NAMES[a.place] || a.place);
     const here = a.place === 'seat' ? a.seat : a.place;
     if (a.place !== 'moving' && here !== lastAt) { lastAt = here; up({ k: 'pos', at: here }); }
+    const inCk = realCockpit && cabin.player.z < -0.1;   // through the cockpit door: the pilot hears about it and sees who it is
+    if (inCk !== wasCk) { wasCk = inCk; up({ k: 'cockpit', in: inCk }); }
     const before = cur;
-    cur = phase === 'flight' ? tasks.find((t) => !t.done && t.def.place === a.place) || null : null;
+    cur = phase === 'flight' ? tasks.find((t) => !t.done && spotOf(t.def) === a.place) || null : null;
     if (cur !== before) paint();
   }
   function finish(t) {
@@ -207,6 +219,7 @@ window.addEventListener('keydown', function (e) {
     // a task that clears panic also tells the pilot's game to calm the passengers a little more ('calm')
     const fx = (t.def.fx || []).concat((t.def.clears || []).indexOf('panic') >= 0 ? [{ type: 'calm', amount: 0.15 }] : []);
     up({ k: 'task', id: t.def.id, title: t.def.title, effect: t.def.effect, fx });
+    if ((t.def.clears || []).indexOf('door') >= 0) crackT = 0;   // locked again
     cur = null; paint(); where();
   }
   // how a task is worked: 'hold' (hold E), 'mash' (alternate Q and E), 'code' (type the keys in `code`)
@@ -223,7 +236,7 @@ window.addEventListener('keydown', function (e) {
     return '<kbd>E</kbd>HOLD · ' + esc(d.title);
   }
   cabin.on('arrive', where); cabin.on('leave', where);
-  cabin.on('hover', (h) => { $('hoverT').textContent = !h ? '' : h.seat ? 'CLICK: SIT IN ' + h.seat : 'CLICK: GO TO THE ' + NAMES[h.place]; });
+  cabin.on('hover', (h) => { $('hoverT').textContent = !h ? '' : h.seat ? 'CLICK: SIT IN ' + h.seat : h.place === 'cockpit' ? 'CLICK: STEP INTO THE COCKPIT' : 'CLICK: GO TO THE ' + NAMES[h.place]; });
   // A task may bring a screen effect of its own (`anim`, played by the role's file through pool.play). It starts with
   // the first key on the task and is told how the task is going: 'working', 'done', or 'left' (the player let go).
   function anim() {
@@ -243,6 +256,7 @@ window.addEventListener('keydown', function (e) {
     const want = String(id || '').toLowerCase();   // the lobby sends ids in capitals
     const def = pool.tasks.find((t) => t.undoes && String(t.undoes).toLowerCase() === want);
     const t = def && openTask(def.id);
+    if (t && (def.clears || []).indexOf('door') >= 0) crackT = 12;   // the cockpit door stands open, as long as it does on the intruder's screen
     if (t) toast((label || 'TROUBLE IN THE CABIN') + ' · ' + def.title);
     return !!t;
   }
@@ -289,7 +303,7 @@ window.addEventListener('keydown', function (e) {
     }
     if (d.cab && d.cab.role && d.cab.role !== role) {
       if (d.cab.role === 'saboteur') sawSab = true;
-      if (d.cab.k === 'pos' && d.cab.at) cabin.setActor('other', { role: d.cab.role, at: d.cab.at });
+      if (d.cab.k === 'pos' && d.cab.at) { cabin.setActor('other', { role: d.cab.role, at: d.cab.at }); otherIn = d.cab.at === 'cockpit'; }
       else if (d.cab.k === 'task') { if (!(d.cab.role === 'saboteur' && trouble(d.cab.id))) toast(d.cab.role === 'saboteur' ? 'SOMETHING IS WRONG IN THE CABIN' : 'THE FLIGHT ATTENDANT IS AT WORK'); }
     }
   });
@@ -298,6 +312,9 @@ window.addEventListener('keydown', function (e) {
   setInterval(() => {
     const now = performance.now(), dt = Math.min(0.25, (now - last) / 1000); last = now;
     where(); faults(dt);
+    crackT = Math.max(0, crackT - dt);
+    if ((crackT > 0 || otherIn) !== doorWant) { doorWant = !doorWant; cabin.setDoor(doorWant); }
+    if (realCockpit && role !== 'attendant' && COCKPIT_RULE !== 'open') cabin.setPass(cabin.door() > 0.5 || cabin.player.z < 0.6);   // anybody else gets in only through an open door
     posT += dt; if (posT > 3) { posT = 0; if (lastAt) up({ k: 'pos', at: lastAt }); }   // say it again, the other page may have just loaded
     if (!embed) clock = Math.max(0, clock - dt);
     $('clockT').textContent = fmt(clock);

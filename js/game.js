@@ -262,6 +262,7 @@
     }, 3000);
     if (!sab && !(d.fx || []).some((f) => f && f.type === 'nocalm')) G.cabin.unrest = Math.max(0, G.cabin.unrest - 0.2);   // the flight attendant calms the cabin with every job done, unless the task says 'nocalm' (the kiss: time only)
     if (sab) A.sfx.warn(); else A.sfx.chime();
+    if (!sab && d.id === 'KISS') K3.kiss();   // if the flight attendant stands in the cockpit, they lean in
     subtitle((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + d.title + ' · ' + sign + ' SECONDS', 4200);
     log((sab ? 'Sabotage in the cabin: ' : 'The flight attendant: ') + String(d.title).toLowerCase() + ' (' + sign + ' s).');
   }
@@ -570,10 +571,14 @@
   }
 
   // test hook
-  // the intruder walked into the cockpit through the open door (or left again): the pilot hears about it
-  function cabinCockpit(inside) {
-    if (!G || G.phase !== 'flight') return;
-    if (inside) { A.sfx.warn(); subtitle('SOMEONE IS IN THE COCKPIT', 4200); log('Somebody came through the cockpit door.'); }
+  // a cabin seat walked into the cockpit through the door (or left again): the pilot hears about it, and finds them standing there
+  function cabinCockpit(inside, role) {
+    const who = role === 'attendant' ? 'attendant' : 'saboteur', flying = !!G && G.phase === 'flight', on = !!inside && flying;
+    K3.visitor(who, on);
+    if (!flying) return;
+    const seen = G.guests || (G.guests = {}); if (!!seen[who] === on) return; seen[who] = on;   // only a change is news
+    if (who === 'attendant') { if (on) { A.sfx.click(); subtitle('THE FLIGHT ATTENDANT STEPS INTO THE COCKPIT', 3200); log('The flight attendant came into the cockpit.'); } else log('The flight attendant went back to the cabin.'); return; }
+    if (on) { A.sfx.warn(); subtitle('SOMEONE IS IN THE COCKPIT', 4200); log('Somebody came through the cockpit door.'); }
     else log('The cockpit is clear again.');
   }
   window.__kk = { get G() { return G; }, land, startFlight, settings, crash, K3, toTitle, music: titleMusic, cabinTask, cabinCockpit };

@@ -488,9 +488,9 @@
       const eff = Math.max(-30, Math.min(30, Math.round(+d.effect || 0))), title = tidy(d.title), sab = d.role === 'saboteur';
       if (myRole() === 'pilot') { if (kk() && kk().cabinTask) kk().cabinTask({ role: d.role, id: tidy(d.id, 16), title, effect: eff, fx: Array.isArray(d.fx) ? d.fx.slice(0, 4) : [] }); }
       else if (myRole() === 'tower') toast((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + title + ' · ' + (eff > 0 ? '+' : '') + eff + ' SECONDS', 5000);
-    } else if (d.k === 'cockpit' && d.role === 'saboteur') {   // the intruder walked through the open cockpit door, or left again
-      if (myRole() === 'pilot') { if (kk() && kk().cabinCockpit) kk().cabinCockpit(!!d.in); }
-      else if (myRole() === 'tower') toast(d.in ? 'SOMEONE IS IN THE COCKPIT' : 'THE COCKPIT IS CLEAR AGAIN', 5000);
+    } else if (d.k === 'cockpit') {   // a cabin seat walked through the cockpit door, or left again: the pilot sees who stands behind them
+      if (myRole() === 'pilot') { if (kk() && kk().cabinCockpit) kk().cabinCockpit(!!d.in, d.role); }
+      else if (myRole() === 'tower' && d.role === 'saboteur') toast(d.in ? 'SOMEONE IS IN THE COCKPIT' : 'THE COCKPIT IS CLEAR AGAIN', 5000);
     }
     try { const f = $('twBook'); if (f && f.contentWindow && CAB_SEAT[myRole()]) f.contentWindow.postMessage({ awf: 1, cab: { k: d.k, role: d.role, at: tidy(d.at, 12).toLowerCase(), id: tidy(d.id, 16) } }, '*'); } catch (e) {}
   }
@@ -515,7 +515,8 @@
     if (!N.code || !N.inGame || myRole() !== 'pilot' || !kk()) return;
     const G = kk().G;
     if (!G) { N.flying = false; N.inGame = false; act({ t: 'st', ph: 'lobby' }); showView('room'); return; }
-    act({ t: 'st', f: G.flight.seed, ph: G.phase, tl: Math.max(0, Math.round(G.timeLeft)), tot: G.total, k: G.strikes, s: G.solved, n: G.flight.modules.length, o: G.flight.modules.filter((m) => !m.solved).map((m) => m.id), u: +G.cabin.unrest.toFixed(2), tb: G.turb > 0 ? +(G.turbP || 0).toFixed(2) : 0, sab: N.members.some((m) => m.role === 'saboteur') ? 1 : 0 });   // sab: somebody sits in the saboteur seat
+    const K3 = kk().K3 || {}, vw = K3.view || {};   // vy, vp, up: where the pilot looks and whether they stand; the cabin seats see the captain do the same
+    act({ t: 'st', vy: +(+vw.yaw || 0).toFixed(2), vp: +(+vw.pitch || 0).toFixed(2), up: K3.pose && K3.pose.to ? 1 : 0, f: G.flight.seed, ph: G.phase, tl: Math.max(0, Math.round(G.timeLeft)), tot: G.total, k: G.strikes, s: G.solved, n: G.flight.modules.length, o: G.flight.modules.filter((m) => !m.solved).map((m) => m.id), u: +G.cabin.unrest.toFixed(2), tb: G.turb > 0 ? +(G.turbP || 0).toFixed(2) : 0, sab: N.members.some((m) => m.role === 'saboteur') ? 1 : 0 });   // sab: somebody sits in the saboteur seat
   }, 500);
   // heartbeat: a closed tab or a dead connection is noticed within about ten seconds
   let lastTick = Date.now(), beat = 0;
