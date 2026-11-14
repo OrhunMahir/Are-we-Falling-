@@ -74,7 +74,7 @@ Two more places use the tower room, so please keep them working when you change 
 - Handbook: read pages pile up over the clip like a notepad and come back down when you go back; the handbook is put down by itself at the end of a flight
 - The old flat desk in the peek view is gone: one wooden desk from the window to the controller
 - Phone fallback: plain handbook
-- **The two cabin seats are in the online lobby**: SABOTEUR and ATTENDANT, both optional, one of each. They play in the cabin (`cabin.html` in a frame). The saboteur plays Batu's first-person version (`js/roles/intruder-play.js`: walking with W A S D, suspicion bar, chest bomb, blackout, smoke and mask effects); the flight attendant plays the simple task runner until Efe's version is there. Tasks are dealt from the flight code; a finished task changes the real time to impact; the pilot gets a message, a line in the log and the cabin's reaction (turbulence, angrier passengers; calmer passengers for the flight attendant); the tower gets a note; the two cabin players see each other walk and sit; at the end each of them is told who won
+- **The two cabin seats are in the online lobby**: INTRUDER and ATTENDANT, both optional, one of each. They play in the cabin (`cabin.html` in a frame). The saboteur plays Batu's first-person version (`js/roles/intruder-play.js`: walking with W A S D, suspicion bar, chest bomb, blackout, smoke and mask effects); the flight attendant plays the simple task runner until Efe's version is there. Tasks are dealt from the flight code; a finished task changes the real time to impact; the pilot gets a message, a line in the log and the cabin's reaction (turbulence, angrier passengers; calmer passengers for the flight attendant); the tower gets a note; the two cabin players see each other walk and sit; at the end each of them is told who won
 - Three ways to work a task: hold E, tap Q and E in turns, type a short key code (`input: 'hold' | 'mash' | 'code'` in the task pool)
 - The aircraft cabin, first version, on a page of its own (`cabin.html`): nine rows of seats with passengers, aisle, galley, lavatory, cockpit door, walking, sitting down in any free seat, and a test runner that deals the tasks of a role from `js/roles/`
 
@@ -97,16 +97,16 @@ A flight needs only two seats, **pilot** and **tower**. The other two are option
 |---|---|---|---|---|
 | Pilot | yes | cockpit | fix the failures before the time runs out | Orhun |
 | Tower | yes | tower room | read the handbook to the pilot | Orhun (handbook), Efe (tower room) |
-| Saboteur | optional | cabin, among the passengers | make the aircraft go down | **Batu** |
+| Intruder (`saboteur` in the code) | optional | cabin, among the passengers | make the aircraft go down | **Batu** |
 | Flight attendant | optional | cabin | keep the cabin calm and the saboteur busy | **Efe** |
 
 The earlier idea of a second villain seat (a helper in a basement with a manual of their own) is **cancelled**. The fourth seat is the flight attendant.
 
 **Who wins.** Pilot, tower and flight attendant are one team. They win when the aircraft lands. The saboteur wins when it does not. Everything the two cabin seats do moves the same clock the pilot is racing: the time to impact.
 
-### Saboteur (Batu)
+### Intruder (Batu)
 
-**Name: SABOTEUR.** Orhun decided on 14 November (15:47) that this seat is called Saboteur, on screen as well as in the code. The paragraph below still says INTRUDER and is out of date on that one point. Batu, please rename what the player sees: `seat: 'INTRUDER'` in `js/roles/saboteur.js` and the titles in `intruder.html` and `js/roles/intruder-play.js`.
+**Name: INTRUDER.** Orhun decided on 14 November (16:30) that the seat keeps the name Intruder on screen: in the lobby, in the cabin and in Batu's files. In the code it stays `saboteur`, and where this document says saboteur it means this seat.
 
 On screen this seat is called **INTRUDER**. In the code it stays `saboteur` (`KK.ROLES.saboteur`, `cabin.html?role=saboteur`); `js/roles/saboteur.js` also registers it as `KK.ROLES.intruder`. The pool has 11 tasks with sounds (`audio/int_*.mp3`) and three Meshy models (`js/roles/intruder-models.js`, load it after `js/models.js`).
 

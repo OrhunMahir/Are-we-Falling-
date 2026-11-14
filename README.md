@@ -45,7 +45,7 @@ When the flight ends the handbook is put down and the head follows the aircraft 
 ## Playing together
 
 - **Same room:** one screen runs the cockpit, a second device opens `manual.html` (the title screen shows a QR code when the game is served over http).
-- **Online:** press **PLAY ONLINE**, create a lobby and give the four-character code to your partner, or use one of the public lobbies (ALPHA to HOTEL). Pick seats in the lobby: PILOT and TOWER are needed, **SABOTEUR** and **ATTENDANT** are optional seats in the aircraft cabin. The saboteur sits among the passengers and does small jobs that cost the pilot time; the flight attendant does jobs that win time back. Voice chat is built in, with a radio effect; the mic can be open, push to talk or muted.
+- **Online:** press **PLAY ONLINE**, create a lobby and give the four-character code to your partner, or use one of the public lobbies (ALPHA to HOTEL). Pick seats in the lobby: PILOT and TOWER are needed, **INTRUDER** and **ATTENDANT** are optional seats in the aircraft cabin. The intruder sits among the passengers and does small jobs that cost the pilot time; the flight attendant does jobs that win time back. Voice chat is built in, with a radio effect; the mic can be open, push to talk or muted.
 
 Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling server, peer to peer data and audio. No own server is needed. `?peer=host:port` points the game at another PeerServer for testing.
 
@@ -74,8 +74,8 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 | `js/audio.js`, `audio/` | sound engine, voices, music and effects (made with ElevenLabs) | Orhun |
 | `js/sky.js` | the storm outside the cockpit | Orhun |
 | `js/net.js`, `css/net.css` | lobbies, seats, voice chat, state sync | Orhun |
-| `cabin.html`, `js/cabin3d.js` | the aircraft cabin where the saboteur and the flight attendant play; also a test page of its own | Orhun |
-| `js/roles/saboteur.js` | the saboteur's task pool | **Batu** |
+| `cabin.html`, `js/cabin3d.js` | the aircraft cabin where the intruder and the flight attendant play; also a test page of its own | Orhun |
+| `js/roles/saboteur.js` | the intruder's task pool (the seat is called `saboteur` in the code) | **Batu** |
 | `js/roles/attendant.js` | the flight attendant's task pool | **Efe** |
 | `manual.html` (handbook content and flight code box) | the tower handbook, generated from `rules.js` | Orhun |
 | `manual.html` (everything under `body.t3d` in the CSS and the "3D tower room" part of the script) | how the handbook sits in the tower room | **Efe** |
@@ -84,7 +84,7 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 | `classic.html` | the first 2D version of the cockpit, kept as a fallback | nobody, leave it |
 | `js/vendor/` | three.js r159, PeerJS, QR code, bundled GLTF loader | do not edit |
 
-See [ROADMAP.md](ROADMAP.md) for what is done, what is planned and how the work is split. The two optional cabin seats, **saboteur** (Batu) and **flight attendant** (Efe), are in the online lobby in a first version; what is still open is listed there.
+See [ROADMAP.md](ROADMAP.md) for what is done, what is planned and how the work is split. The two optional cabin seats, **intruder** (Batu) and **flight attendant** (Efe), are in the online lobby in a first version; what is still open is listed there.
 
 ## 3D models (Meshy)
 
