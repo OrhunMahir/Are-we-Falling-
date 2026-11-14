@@ -212,13 +212,28 @@
   $('dDoor').onchange = (e) => cabin.setDoor(e.target.checked);
 
   // a sabotage was finished somewhere in the cabin: the flight attendant gets the task that undoes it
-  function trouble(id) {
+  function trouble(id, label) {
     if (!reactive) return false;
     const want = String(id || '').toLowerCase();   // the lobby sends ids in capitals
     const def = pool.tasks.find((t) => t.undoes && String(t.undoes).toLowerCase() === want);
     const t = def && openTask(def.id);
-    if (t) toast('TROUBLE IN THE CABIN · ' + def.title);
+    if (t) toast((label || 'TROUBLE IN THE CABIN') + ' · ' + def.title);
     return !!t;
+  }
+  // With no intruder on board the same trouble turns up by itself now and then, as a plain malfunction, so the flight
+  // attendant still has work. A malfunction costs no time; fixing it gives the task's seconds as usual.
+  // Is there an intruder? The lobby says so in `st.sab`; without that, anything heard from the saboteur seat counts.
+  let sabSeat = null, sawSab = q.get('intruder') === '1', flightT = 0, nextFault = 0;
+  const frng = KK.makeRng((seed * 131 + 17) >>> 0);
+  function faults(dt) {
+    if (!reactive || phase !== 'flight' || (sabSeat != null ? sabSeat : sawSab)) return;
+    flightT += dt;
+    if (!nextFault) nextFault = 20 + frng.int(0, 15);                      // the first one after 20 to 35 seconds
+    if (flightT < nextFault) return;
+    nextFault = flightT + 45 + frng.int(0, 30);                            // then every 45 to 75 seconds
+    if (tasks.filter((t) => !t.done && t.def.undoes).length >= 2) return;   // never more than two waiting
+    const can = pool.tasks.filter((d) => d.undoes && !tasks.some((t) => t.def === d && (!t.done || d.once)));
+    if (can.length) trouble(can[frng.int(0, can.length - 1)].undoes, 'MALFUNCTION');
   }
   // without a lobby: pick a sabotage from the test controls, or let Batu's page do it from a second tab
   // (intruder.html?attendant=player talks over a BroadcastChannel, see KKLink in js/roles/intruder-play.js)
@@ -226,7 +241,7 @@
     const sel = $('dSab'); $('dSabL').style.display = '';
     sel.innerHTML = '<option value="">A SABOTAGE HAPPENS…</option>' + pool.tasks.filter((t) => t.undoes).map((t) => '<option value="' + esc(t.undoes) + '">' + esc(String(t.undoes).toUpperCase() + ' → ' + t.title) + '</option>').join('');
     sel.onchange = () => { if (sel.value) trouble(sel.value); sel.value = ''; sel.blur(); };
-    try { const ch = new BroadcastChannel('awf-cabin-' + (q.get('room') || 'test')); ch.onmessage = (e) => { const m = e.data; if (m && m.t === 'task') trouble(m.id); }; } catch (e) {}
+    try { const ch = new BroadcastChannel('awf-cabin-' + (q.get('room') || 'test')); ch.onmessage = (e) => { const m = e.data; sawSab = true; if (m && m.t === 'task') trouble(m.id); }; } catch (e) {}
   }
 
   // the lobby sends the flight in: the clock, the mood of the cabin, the end, and where the other cabin seat is
@@ -236,6 +251,7 @@
       const st = d.st;
       if (st.f && +st.f !== seed && (st.ph === 'intro' || st.ph === 'flight')) { location.replace('cabin.html?embed=1&role=' + role + '&seed=' + (+st.f)); return; }
       if (st.tl != null) clock = +st.tl;
+      if (st.sab != null) sabSeat = !!st.sab;
       cabin.setState({ unrest: +st.u || 0, turb: +st.tb || 0 });
       if (st.ph && st.ph !== phase) {
         phase = st.ph;
@@ -246,6 +262,7 @@
       }
     }
     if (d.cab && d.cab.role && d.cab.role !== role) {
+      if (d.cab.role === 'saboteur') sawSab = true;
       if (d.cab.k === 'pos' && d.cab.at) cabin.setActor('other', { role: d.cab.role, at: d.cab.at });
       else if (d.cab.k === 'task') { if (!(d.cab.role === 'saboteur' && trouble(d.cab.id))) toast(d.cab.role === 'saboteur' ? 'SOMETHING IS WRONG IN THE CABIN' : 'THE FLIGHT ATTENDANT IS AT WORK'); }
     }
@@ -254,7 +271,7 @@
   let last = performance.now(), posT = 0;
   setInterval(() => {
     const now = performance.now(), dt = Math.min(0.25, (now - last) / 1000); last = now;
-    where();
+    where(); faults(dt);
     posT += dt; if (posT > 3) { posT = 0; if (lastAt) up({ k: 'pos', at: lastAt }); }   // say it again, the other page may have just loaded
     if (!embed) clock = Math.max(0, clock - dt);
     $('clockT').textContent = fmt(clock);
@@ -267,7 +284,7 @@
     if (cur.prog >= cur.def.seconds - 1e-6) finish(cur);
   }, 50);
   paint(); where();
-  window.__cabin = { cabin, tasks, openTask, trouble, seed, role, embed, get clock() { return clock; }, get phase() { return phase; } };
+  window.__cabin = { cabin, tasks, openTask, trouble, faults, seed, role, embed, get clock() { return clock; }, get phase() { return phase; } };
   }
 })();
 </script>

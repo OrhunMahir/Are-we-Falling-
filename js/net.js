@@ -317,7 +317,7 @@
     if (!N.code || !N.inGame || myRole() !== 'pilot' || !kk()) return;
     const G = kk().G;
     if (!G) { N.flying = false; N.inGame = false; act({ t: 'st', ph: 'lobby' }); showView('room'); return; }
-    act({ t: 'st', f: G.flight.seed, ph: G.phase, tl: Math.max(0, Math.round(G.timeLeft)), tot: G.total, k: G.strikes, s: G.solved, n: G.flight.modules.length, o: G.flight.modules.filter((m) => !m.solved).map((m) => m.id), u: +G.cabin.unrest.toFixed(2), tb: G.turb > 0 ? +(G.turbP || 0).toFixed(2) : 0 });
+    act({ t: 'st', f: G.flight.seed, ph: G.phase, tl: Math.max(0, Math.round(G.timeLeft)), tot: G.total, k: G.strikes, s: G.solved, n: G.flight.modules.length, o: G.flight.modules.filter((m) => !m.solved).map((m) => m.id), u: +G.cabin.unrest.toFixed(2), tb: G.turb > 0 ? +(G.turbP || 0).toFixed(2) : 0, sab: N.members.some((m) => m.role === 'saboteur') ? 1 : 0 });   // sab: somebody sits in the saboteur seat
   }, 500);
   // heartbeat: a closed tab or a dead connection is noticed within about ten seconds
   let lastTick = Date.now();
