@@ -247,7 +247,7 @@
         else if (f.type === 'blackout') { K3.lightning(); turbulence(0.3); }
       });
     }, 3000);
-    if (!sab) G.cabin.unrest = Math.max(0, G.cabin.unrest - 0.2);   // the flight attendant calms the cabin with every job done
+    if (!sab && !(d.fx || []).some((f) => f && f.type === 'nocalm')) G.cabin.unrest = Math.max(0, G.cabin.unrest - 0.2);   // the flight attendant calms the cabin with every job done, unless the task says 'nocalm' (the kiss: time only)
     if (sab) A.sfx.warn(); else A.sfx.chime();
     subtitle((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + d.title + ' · ' + sign + ' SECONDS', 4200);
     log((sab ? 'Sabotage in the cabin: ' : 'The flight attendant: ') + String(d.title).toLowerCase() + ' (' + sign + ' s).');

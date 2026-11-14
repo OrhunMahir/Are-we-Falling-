@@ -23,7 +23,10 @@
      spot     where exactly inside the place, for a marker.
      always   true: on the list on every flight (the kiss).
      once     true: can be done only once a flight.
-     anim     a screen effect this file plays itself; today only 'kiss'.
+     anim     a screen effect this file plays itself; today only 'kiss'. The cabin page calls KK.ROLES.attendant.play(anim, ctl)
+              when the player starts on the task (this one IS read, see anim() in cabin.html).
+   fx 'nocalm': every finished flight attendant task calms the passengers a little (js/game.js); a task with
+              fx: [{ type: 'nocalm' }] does not.
    Voice lines exist in audio/extra/ (att_calm, att_sit, att_stop, att_masks, att_cockpit, att_got, each as _a and _b).
    The cabin page plays `sound` from audio/ only, so they are not wired yet: move the chosen takes to audio/ and
    add `sound: 'att_calm'` and so on. */
@@ -150,12 +153,13 @@
         effect: 5,
         always: true, once: true,
         anim: 'kiss',
+        fx: [{ type: 'nocalm' }],       // time only: this one does not calm the passengers
       },
     ],
   };
 
   // ---------- the kiss: the screen goes dark and a few lipstick marks appear ----------
-  // Starts the moment the interaction key goes down on KISS THE PILOT, stays while the task finishes, then clears.
+  // Starts the moment the interaction key goes down on KISS THE PILOT, stays while the task is worked on, then clears.
   if (!root.document) return;
   const doc = root.document;
   let layer = null, running = false;
@@ -188,22 +192,7 @@
       clearInterval(iv); el.classList.remove('on'); setTimeout(() => { el.innerHTML = ''; running = false; }, 300);
     }, 60);
   }
+  // the cabin page calls this when the player starts working on a task that has `anim` (see anim() in cabin.html)
+  KK.ROLES.attendant.play = function (name, ctl) { if (name === 'kiss') kiss({ hold: ctl && ctl.state }); };
   KK.ROLES.attendant.kiss = kiss;
-
-  // The cabin page has no hook for a task's own effect yet, so this watches for the key itself: it reads the page's
-  // task list (window.__cabin, set by cabin.html) and does nothing anywhere else.
-  let eDown = false;
-  function kissTask() {
-    const c = root.__cabin; if (!c || c.role !== 'attendant' || !c.cabin || !Array.isArray(c.tasks) || c.phase !== 'flight') return null;
-    let at; try { at = c.cabin.at().place; } catch (e) { return null; }
-    const cur = c.tasks.find((t) => !t.done && t.def && t.def.place === at);   // the task the page is working on here
-    return cur && cur.def.anim === 'kiss' ? cur : null;
-  }
-  root.addEventListener('keyup', (e) => { if (e.key && e.key.toLowerCase() === 'e') eDown = false; });
-  root.addEventListener('keydown', (e) => {
-    if (!e.key || e.key.toLowerCase() !== 'e' || e.repeat) return;
-    eDown = true;
-    const t = kissTask(); if (!t) return;
-    kiss({ hold: () => (t.done ? 'done' : eDown ? 'working' : 'left') });
-  });
 })(typeof window !== 'undefined' ? window : this);

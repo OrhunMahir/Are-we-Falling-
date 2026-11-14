@@ -205,7 +205,14 @@
   }
   cabin.on('arrive', where); cabin.on('leave', where);
   cabin.on('hover', (h) => { $('hoverT').textContent = !h ? '' : h.seat ? 'CLICK: SIT IN ' + h.seat : 'CLICK: GO TO THE ' + NAMES[h.place]; });
-  window.addEventListener('keydown', (e) => { const k = e.key.toLowerCase(); if (k === 'e') eDown = true; if ((k === 'e' || k === 'q') && !e.repeat) key(k); });
+  // A task may bring a screen effect of its own (`anim`, played by the role's file through pool.play). It starts with
+  // the first key on the task and is told how the task is going: 'working', 'done', or 'left' (the player let go).
+  function anim() {
+    const t = cur; if (!t || !t.def.anim || typeof pool.play !== 'function') return;
+    const hold = (t.def.input || 'hold') === 'hold';
+    try { pool.play(t.def.anim, { state: () => (t.done ? 'done' : cur === t && (!hold || eDown) ? 'working' : 'left') }); } catch (e) {}
+  }
+  window.addEventListener('keydown', (e) => { const k = e.key.toLowerCase(); if (k === 'e') eDown = true; if ((k === 'e' || k === 'q') && !e.repeat) { key(k); anim(); } });
   window.addEventListener('keyup', (e) => { if (e.key.toLowerCase() === 'e') eDown = false; });
   $('dUnrest').oninput = (e) => cabin.setState({ unrest: e.target.value / 100 });
   $('dTurb').oninput = (e) => cabin.setState({ turb: e.target.value / 100 });
