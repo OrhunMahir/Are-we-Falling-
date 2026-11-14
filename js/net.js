@@ -30,7 +30,7 @@
   root.innerHTML =
     '<div class="net-browse net-card">' +
       '<div class="net-head"><b>ARE WE <i>FALLING?</i></b><span>ONLINE LOBBIES</span><button class="net-x" id="netClose" title="Back to the title">✕</button></div>' +
-      '<p class="net-lead">Play from two places. One of you flies, the others read the handbook. Voice chat is built in, so nobody needs a second app.</p>' +
+      '<p class="net-lead">Two to four players, each on their own computer. One flies, one reads the handbook in the tower. Two more can ride in the cabin: an intruder who wants the aircraft down and a flight attendant who keeps it up. Voice chat is built in.</p>' +
       '<label class="net-l">YOUR CALLSIGN</label><input id="netName" maxlength="14" autocomplete="off" spellcheck="false" placeholder="CAPTAIN">' +
       '<div class="net-row"><button id="netCreate" class="net-btn pri">CREATE A PRIVATE LOBBY</button>' +
       '<div class="net-join"><input id="netCode" maxlength="8" autocomplete="off" spellcheck="false" placeholder="CODE"><button id="netJoin" class="net-btn">JOIN</button></div></div>' +
