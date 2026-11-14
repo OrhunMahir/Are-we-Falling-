@@ -206,6 +206,11 @@
           if (key === c.stK && now - c.stT < 900) return;
           c.stK = key; c.stT = now;
         }
+        if (d && d.t === 'cab' && d.k === 'link' && d.m && d.m.t === 'pose') {   // where a cabin player stands: four a second is plenty on the relay
+          const now = Date.now(), pk = 'pT' + d.role;
+          if (now - (c[pk] || 0) < 240) return;
+          c[pk] = now;
+        }
         relaySend(id, { k: 'd', d });
       },
       close() { if (relays[id] === c) delete relays[id]; if (c.open) { c.open = false; relaySend(id, { k: 'bye' }); c.emit('close'); } },
@@ -484,15 +489,35 @@
   /* a cabin seat finished a task or moved: the pilot's game takes the effect, the cabin views show each other */
   function onCab(d) {
     if (!d || !CAB_SEAT[d.role]) return;
+    const pilot = myRole() === 'pilot', tower = myRole() === 'tower', sab = d.role === 'saboteur';
     if (d.k === 'task') {
-      const eff = Math.max(-30, Math.min(30, Math.round(+d.effect || 0))), title = tidy(d.title), sab = d.role === 'saboteur';
-      if (myRole() === 'pilot') { if (kk() && kk().cabinTask) kk().cabinTask({ role: d.role, id: tidy(d.id, 16), title, effect: eff, fx: Array.isArray(d.fx) ? d.fx.slice(0, 4) : [] }); }
-      else if (myRole() === 'tower') toast((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + title + ' · ' + (eff > 0 ? '+' : '') + eff + ' SECONDS', 5000);
+      const eff = Math.max(-30, Math.min(30, Math.round(+d.effect || 0))), title = tidy(d.title);
+      if (pilot) { if (kk() && kk().cabinTask) kk().cabinTask({ role: d.role, id: tidy(d.id, 16), title, effect: eff, fx: Array.isArray(d.fx) ? d.fx.slice(0, 4) : [] }); }
+      else if (tower) toast((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + title + (eff ? ' · ' + (eff > 0 ? '+' : '') + eff + ' SECONDS' : ''), 5000);
     } else if (d.k === 'cockpit') {   // a cabin seat walked through the cockpit door, or left again: the pilot sees who stands behind them
-      if (myRole() === 'pilot') { if (kk() && kk().cabinCockpit) kk().cabinCockpit(!!d.in, d.role); }
-      else if (myRole() === 'tower' && d.role === 'saboteur') toast(d.in ? 'SOMEONE IS IN THE COCKPIT' : 'THE COCKPIT IS CLEAR AGAIN', 5000);
+      if (pilot) { if (kk() && kk().cabinCockpit) kk().cabinCockpit(!!d.in, d.role); }
+      else if (tower && sab) toast(d.in ? 'SOMEONE IS IN THE COCKPIT' : 'THE COCKPIT IS CLEAR AGAIN', 5000);
+    } else if (d.k === 'door') {
+      if (pilot && kk() && kk().cabinDoor) kk().cabinDoor(!!d.open, d.role);
+    } else if (d.k === 'link' && d.m) {
+      if (pilot && kk()) { if (d.m.t === 'caught' && kk().cabinCaught) kk().cabinCaught(!!d.m.ok); }
+      else if (tower && d.m.t === 'caught') toast(d.m.ok ? 'THE FLIGHT ATTENDANT CAUGHT THE INTRUDER' : 'THE FLIGHT ATTENDANT GRABBED THE WRONG PASSENGER', 5000);
     }
-    try { const f = $('twBook'); if (f && f.contentWindow && CAB_SEAT[myRole()]) f.contentWindow.postMessage({ awf: 1, cab: { k: d.k, role: d.role, at: tidy(d.at, 12).toLowerCase(), id: tidy(d.id, 16) } }, '*'); } catch (e) {}
+    try {
+      const f = $('twBook');
+      if (f && f.contentWindow && CAB_SEAT[myRole()]) f.contentWindow.postMessage({ awf: 1, cab: { k: d.k, role: d.role, at: tidy(d.at, 12).toLowerCase(), id: tidy(d.id, 16), in: !!d.in, open: !!d.open, m: d.k === 'link' ? d.m : undefined } }, '*');
+    } catch (e) {}
+  }
+  /* what one cabin page tells the other (the link of js/roles/intruder-play.js and attendant-play.js): small flat objects only */
+  const LINK_NUM = { x: 6, y: 3, z: 12, yaw: 50, pitch: 2, dur: 120, amount: 1, effect: 30, sus: 100 }, LINK_STR = { t: 10, who: 4, place: 10, seat: 4, type: 12, name: 20, id: 16 }, LINK_BOOL = ['moving', 'working', 'tackle', 'won', 'in', 'ok', 'carry'];
+  function cleanLink(m) {
+    if (!m || typeof m !== 'object') return null;
+    const o = {};
+    Object.keys(LINK_NUM).forEach((k) => { if (m[k] != null && isFinite(+m[k])) o[k] = Math.max(-LINK_NUM[k], Math.min(LINK_NUM[k], Math.round(+m[k] * 100) / 100)); });
+    Object.keys(LINK_STR).forEach((k) => { if (m[k] != null) o[k] = String(m[k]).replace(/[^\w\-]/g, '').slice(0, LINK_STR[k]); });
+    LINK_BOOL.forEach((k) => { if (m[k] != null) o[k] = !!m[k]; });
+    if (Array.isArray(m.types)) o.types = m.types.slice(0, 6).map((x) => String(x).replace(/[^\w]/g, '').slice(0, 12));
+    return o.t ? o : null;
   }
   // the cabin page (in the frame) reports what its player does
   window.addEventListener('message', (e) => {
@@ -502,6 +527,8 @@
     if (c.k === 'task') act({ t: 'cab', k: 'task', id: tidy(c.id, 16), title: tidy(c.title), effect: Math.max(-30, Math.min(30, Math.round(+c.effect || 0))), fx: Array.isArray(c.fx) ? c.fx.slice(0, 4).map((x) => ({ type: tidy(x && x.type, 12).toLowerCase(), amount: Math.max(0, Math.min(1, +(x && x.amount) || 0)) })) : [] });
     else if (c.k === 'pos') act({ t: 'cab', k: 'pos', at: tidy(c.at, 12) });
     else if (c.k === 'cockpit') act({ t: 'cab', k: 'cockpit', in: !!c.in });
+    else if (c.k === 'door') act({ t: 'cab', k: 'door', open: !!c.open });
+    else if (c.k === 'link') { const m = cleanLink(c.m); if (m) act({ t: 'cab', k: 'link', m }); }
   });
   function toBook(d) { try { const f = $('twBook'); if (f && f.contentWindow) f.contentWindow.postMessage({ awf: 1, st: d }, '*'); } catch (e) {} }
   function onState(d) {
@@ -516,7 +543,7 @@
     const G = kk().G;
     if (!G) { N.flying = false; N.inGame = false; act({ t: 'st', ph: 'lobby' }); showView('room'); return; }
     const K3 = kk().K3 || {}, vw = K3.view || {};   // vy, vp, up: where the pilot looks and whether they stand; the cabin seats see the captain do the same
-    act({ t: 'st', vy: +(+vw.yaw || 0).toFixed(2), vp: +(+vw.pitch || 0).toFixed(2), up: K3.pose && K3.pose.to ? 1 : 0, f: G.flight.seed, ph: G.phase, tl: Math.max(0, Math.round(G.timeLeft)), tot: G.total, k: G.strikes, s: G.solved, n: G.flight.modules.length, o: G.flight.modules.filter((m) => !m.solved).map((m) => m.id), u: +G.cabin.unrest.toFixed(2), tb: G.turb > 0 ? +(G.turbP || 0).toFixed(2) : 0, sab: N.members.some((m) => m.role === 'saboteur') ? 1 : 0 });   // sab: somebody sits in the saboteur seat
+    act({ t: 'st', vy: +(+vw.yaw || 0).toFixed(2), vp: +(+vw.pitch || 0).toFixed(2), up: K3.pose && K3.pose.to ? 1 : 0, f: G.flight.seed, ph: G.phase, tl: Math.max(0, Math.round(G.timeLeft)), tot: G.total, k: G.strikes, s: G.solved, n: G.flight.modules.length, o: G.flight.modules.filter((m) => !m.solved).map((m) => m.id), u: +G.cabin.unrest.toFixed(2), tb: G.turb > 0 ? +(G.turbP || 0).toFixed(2) : 0, sab: N.members.some((m) => m.role === 'saboteur') ? 1 : 0, att: N.members.some((m) => m.role === 'attendant') ? 1 : 0, dr: G.door ? 1 : 0, dk: +(G.drunk || 0).toFixed(1) });   // sab, att: somebody sits in that cabin seat; dr: the cockpit door stands open; dk: how drunk the captain is
   }, 500);
   // heartbeat: a closed tab or a dead connection is noticed within about ten seconds
   let lastTick = Date.now(), beat = 0;

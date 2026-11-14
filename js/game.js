@@ -258,13 +258,14 @@
         else if (f.type === 'masks' || f.type === 'smoke') { G.cabin.unrest = Math.min(1, G.cabin.unrest + 0.12); if (!G.cabin.complaint) cabinComplain(); }
         else if (f.type === 'blackout') { K3.lightning(); turbulence(0.3); }
         else if (f.type === 'calm') G.cabin.unrest = Math.max(0, G.cabin.unrest - (+f.amount || 0.15));   // the flight attendant put an end to a panic
+        else if (f.type === 'coffee') { G.drunk = Math.max(0, G.drunk - 2.5); renderDrunk(); }            // a black coffee from the flight attendant: the labels stop swimming
       });
     }, 3000);
     if (!sab && !(d.fx || []).some((f) => f && f.type === 'nocalm')) G.cabin.unrest = Math.max(0, G.cabin.unrest - 0.2);   // the flight attendant calms the cabin with every job done, unless the task says 'nocalm' (the kiss: time only)
     if (sab) A.sfx.warn(); else A.sfx.chime();
-    if (!sab && d.id === 'KISS') K3.kiss();   // if the flight attendant stands in the cockpit, they lean in
-    subtitle((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + d.title + ' · ' + sign + ' SECONDS', 4200);
-    log((sab ? 'Sabotage in the cabin: ' : 'The flight attendant: ') + String(d.title).toLowerCase() + ' (' + sign + ' s).');
+    if (!sab && d.id === 'COFFEE') K3.kiss();   // the flight attendant in the cockpit leans in and hands the captain the cup
+    subtitle((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + d.title + (eff ? ' · ' + sign + ' SECONDS' : ''), 4200);
+    log((sab ? 'Sabotage in the cabin: ' : 'The flight attendant: ') + String(d.title).toLowerCase() + (eff ? ' (' + sign + ' s).' : '.'));
   }
   // ---------- the ashtray: a drag buys a little time and clears the head, but the smoke stays in the cockpit for a while, and the cigarette burns down ----------
   const DRAG_SMOKE = 0.3, SMOKE_MAX = 1.6, SMOKE_CLEAR = 40;   // SMOKE_CLEAR: seconds for one full unit of smoke to drift away
@@ -581,5 +582,29 @@
     if (on) { A.sfx.warn(); subtitle('SOMEONE IS IN THE COCKPIT', 4200); log('Somebody came through the cockpit door.'); }
     else log('The cockpit is clear again.');
   }
-  window.__kk = { get G() { return G; }, land, startFlight, settings, crash, K3, toTitle, music: titleMusic, cabinTask, cabinCockpit };
+  // the cockpit door from the cabin side: the intruder cracked it, or the flight attendant holds it open. The cabin seats read it back from `st.dr`.
+  function cabinDoor(open, role) {
+    if (!G) return;
+    const by = G.doorBy || (G.doorBy = {}), was = !!G.door;
+    by[role === 'attendant' ? 'attendant' : 'saboteur'] = !!open;
+    G.door = !!(by.attendant || by.saboteur);
+    K3.setDoor(!!by.saboteur && G.phase === 'flight');
+    if (G.phase !== 'flight' || was === G.door) return;
+    if (G.door && by.saboteur && role !== 'attendant') { A.sfx.warn(); subtitle('THE COCKPIT DOOR HAS BEEN FORCED OPEN', 3600); log('The cockpit door was forced open from the cabin.', 'bad'); }
+    else if (!G.door && role !== 'attendant') log('The cockpit door is shut again.');
+  }
+  // the flight attendant grabbed a passenger: the intruder (ok) or an innocent one
+  function cabinCaught(ok) {
+    if (!G || G.phase !== 'flight') return;
+    if (ok) {
+      G.timeLeft = Math.min(G.total, G.timeLeft + 15); G.cabin.unrest = Math.max(0, G.cabin.unrest - 0.25);
+      A.sfx.solved(); subtitle('CABIN CREW · THE INTRUDER IS IN HANDCUFFS · +15 SECONDS', 4600); log('The flight attendant caught the intruder (+15 s).', 'good');
+      G.caught = true;
+    } else {
+      G.cabin.unrest = Math.min(0.99, G.cabin.unrest + 0.15);
+      A.sfx.warn(); subtitle('CABIN CREW · THE ATTENDANT GRABBED THE WRONG PASSENGER · THE CABIN IS UPSET', 3600); log('The flight attendant grabbed an innocent passenger.', 'bad');
+    }
+    renderCabin();
+  }
+  window.__kk = { get G() { return G; }, land, startFlight, settings, crash, K3, toTitle, music: titleMusic, cabinTask, cabinCockpit, cabinDoor, cabinCaught };
 })();

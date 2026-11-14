@@ -243,6 +243,7 @@
     W.trolley.position.set(0, 0, 4.8); W.trolley.rotation.y = 0.3;
     // the cockpit behind the door: the cabin only paints a black wall there, so hide it and build the room
     scene.traverse((o) => { if (o.isMesh && o.position.z < -0.5 && o.position.z > -0.7 && o.parent === scene) o.visible = false; });
+    if (window.__cockpit) return W;   // js/cabin-cockpit.js hangs the pilot's real cockpit behind the door: no stand-in room
     const C = new T.Group(); scene.add(C); W.cockpit = C;
     const cb = (w, h, d, x, y, z, c, basic) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), basic ? new T.MeshBasicMaterial({ color: c }) : lam(c)); m.position.set(x, y, z); C.add(m); return m; };
     cb(2.2, 0.04, 1.9, 0, -0.02, -0.95, 0x22262e);                                   // floor
@@ -265,6 +266,7 @@
   }
   function plant(W, name, x, y, z, size, blink) {
     if (!W) return;
+    if (W.link) W.link.send({ t: 'plant', name, x: +x.toFixed(2), y: +y.toFixed(2), z: +z.toFixed(2) });   // the flight attendant's screen shows it too
     const g = new T.Group(); g.position.set(x, y, z); W.scene.add(g);
     const ok = window.KKModels && KKModels.load(name, (m) => { g.add(KKModels.fit(m, size, Math.random() * 6)); });
     if (!ok) g.add(new T.Mesh(new T.BoxGeometry(size, size * 0.7, size * 0.8), lam(0x6f747a)));
@@ -440,7 +442,7 @@
     const vestCanvas = document.createElement('canvas'); vestCanvas.id = 'ixVest'; root.appendChild(vestCanvas);
     const hudTasks = el('ixTasks', 'ix-box', '<div id="ixClock">TIME TO IMPACT <b id="ixClockT">7:00</b></div><div id="ixList"></div>');
     if (window.innerWidth < 1000) hudTasks.classList.add('small');
-    const hudSus = el('ixSus', 'ix-box', '<small>SUSPICION</small><div class="ixbar"><i id="ixSusB"></i></div>' + (remoteAtt ? '<small>+ A SECOND FLIGHT ATTENDANT (PLAYER)</small>' : '') + '<small id="ixWhere"></small>');
+    const hudSus = el('ixSus', 'ix-box', '<small>SUSPICION</small><div class="ixbar"><i id="ixSusB"></i></div>' + (remoteAtt ? '<small>THE FLIGHT ATTENDANT IS A PLAYER</small>' : '') + '<small id="ixWhere"></small>');
     const hudAct = el('ixAct', 'ix-box');
     const toastEl = el('ixToast', 'ix-box');
     el('ixCross');
@@ -463,12 +465,11 @@
     const att = { x: 0, z: 1.1, yaw: Math.PI, dir: 1, wait: 2, mode: 'patrol', moving: false, tackle: false, target: null, seenFor: 0 };
     const rem = { x: 0, z: 9.8, yaw: 0, moving: false, tackle: false, seen: false };
     hookScene(cabin, canvas, (scene) => {
-      W = makeWorldFx(scene);
-      attG = makePerson(LOOKS.attendant); scene.add(attG);                                   // the AI attendant, always on board
-      ensurePeople(() => meshyCrew(scene, 'crew_att', 1.68, attM));
-      if (remoteAtt) { remG = makePerson(LOOKS.attendant2); remG.visible = false; scene.add(remG); ensurePeople(() => meshyCrew(scene, 'crew_stw', 1.78, remM)); }   // the player attendant (4 players): a male steward in a suit and tie
+      W = makeWorldFx(scene); W.link = opts.link || null;
+      if (!remoteAtt) { attG = makePerson(LOOKS.attendant); scene.add(attG); ensurePeople(() => meshyCrew(scene, 'crew_att', 1.68, attM)); }   // 3 players: the AI attendant patrols
+      else { remG = makePerson(LOOKS.attendant); remG.visible = false; scene.add(remG); ensurePeople(() => meshyCrew(scene, 'crew_att', 1.68, remM)); }   // 4 players: the flight attendant is a person (js/roles/attendant-play.js), drawn where her screen says
     }, () => {
-      if (attG) { attG.position.set(att.x, 0, att.z); attG.rotation.y = att.yaw; attG.visible = !attM.model; }
+      if (attG) { attG.position.set(att.x, 0, att.z); attG.rotation.y = att.yaw; attG.visible = !attM.model; }   // (only with 3 players)
       if (attM.model) { attM.model.position.set(att.x, 0, att.z); attM.model.rotation.y = att.yaw; }
       if (remG) { remG.visible = rem.seen && !remM.model; remG.position.set(rem.x, 0, rem.z); remG.rotation.y = rem.yaw; }
       if (remM.model) { remM.model.visible = rem.seen; remM.model.position.set(rem.x, 0, rem.z); remM.model.rotation.y = rem.yaw; }
@@ -493,6 +494,7 @@
 
     // ---- the AI flight attendant (3 players)
     function attAI(dt) {
+      if (remoteAtt) { watched(dt); return; }
       const dx = P.x - att.x, dz = P.z - att.z, dist = Math.hypot(dx, dz);
       const hidden = P.place === 'lavatory' || S.fx.blackout > 0;
       if (S.suspicion >= 100 && att.mode !== 'chase') { att.mode = 'chase'; snd.play('att_stop', 0.9); toast('SHE IS COMING FOR YOU · HIDE OR SIT DOWN AND ACT NATURAL', 2.6); }
@@ -523,12 +525,25 @@
       if (att.tackle && S.suspicion >= 60) end(false, 'The flight attendant tackled you in the aisle. The device on your chest never went off.');
     }
 
+    // 4 players: no AI. The suspicion bar shows how much the player attendant could have seen; she catches with her own key.
+    function watched(dt) {
+      const dx = P.x - rem.x, dz = P.z - rem.z, dist = Math.hypot(dx, dz);
+      const hidden = P.place === 'lavatory' || S.fx.blackout > 0 || !rem.seen;
+      const sees = dist < 3.4 && !hidden;
+      const loud = cur && cur.prog > 0 && ((cur.def.input === 'hold' && keys().e) || cur.def.input !== 'hold');
+      if (sees && loud) S.suspicion += (cur.def.noise || 0.3) * 34 * dt;
+      else if (sees && (P.place === 'door' || P.place === 'cockpit')) S.suspicion += 7 * dt;
+      else S.suspicion -= (P.seat && keys().q ? 14 : P.seat ? 6 : 3.5) * dt;
+      S.suspicion = clamp(S.suspicion, 0, 100);
+      S.near = sees && dist < 1.6;   // she is right next to you: work goes slowly
+    }
     // ---- 4 players: a second flight attendant, played by a person on another screen (Efe's seat)
     let remote = { x: 0, z: 9.8, yaw: 0, moving: false, tackle: false };
     function setAttendant(p) { if (p) { remote = Object.assign(remote, p); rem.seen = true; } }
     if (remoteAtt) opts.link.on((m) => {
       if (m.t === 'pose' && m.who === 'att') setAttendant(m);
-      if (m.t === 'caught') end(false, 'The other flight attendant picked you out of the crowd and pinned you down.');
+      if (m.t === 'caught' && m.ok === false) { S.suspicion = clamp(S.suspicion + 30, 0, 100); toast('SHE GRABBED YOUR ARM · NOTHING ON YOU · SHE LETS YOU GO', 3); snd.play('sfx_heartbeat', 0.6); }
+      else if (m.t === 'caught') end(false, 'The flight attendant caught you in the act and pinned you down.');
     });
     function remoteStep(dt) { rem.x += (remote.x - rem.x) * Math.min(1, dt * 10); rem.z += (remote.z - rem.z) * Math.min(1, dt * 10); rem.yaw = remote.yaw; rem.moving = remote.moving; rem.tackle = remote.tackle; }
 
@@ -628,7 +643,7 @@
       let working = false;
       if (cur) {
         const d = cur.def;
-        if (d.input === 'hold' && k.e) { cur.prog += dt; startTaskSound(); }
+        if (d.input === 'hold' && k.e) { cur.prog += dt * (S.near ? 0.4 : 1); startTaskSound(); }
         working = (d.input === 'hold' && k.e) || (d.input !== 'hold' && cur.prog > 0);
         hudAct.classList.add('show');
         const pct = Math.min(100, cur.prog / d.seconds * 100);
@@ -656,6 +671,7 @@
       });
       $('ixSusB').style.width = S.suspicion + '%'; hudSus.classList.toggle('hot', S.suspicion > 65);
       const remNear = rem.seen && Math.hypot(P.x - rem.x, P.z - rem.z) < 2.5;
+      if (S.near && cur && cur.prog > 0 && !S.nearSaid) { S.nearSaid = true; toast('THE FLIGHT ATTENDANT IS RIGHT NEXT TO YOU · YOUR HANDS ARE SHAKING', 2.2); } else if (!S.near) S.nearSaid = false;
       warn.style.boxShadow = 'inset 0 0 140px rgba(255,40,30,' + (att.mode === 'chase' ? 0.55 : S.suspicion > 65 || remNear ? 0.25 : 0) + ')';
       if (S.suspicion > 65 || remNear) snd.loop('sfx_heartbeat', 0.35); else snd.stop('sfx_heartbeat');
       if (att.mode === 'chase') snd.loop('sfx_run_steps', 0.3); else snd.stop('sfx_run_steps');
@@ -706,7 +722,7 @@
     paint();
     snd.loop('int_tick', 0.12);
     setTimeout(() => snd.play('int_v_seat', 0.8), 1200);
-    setTimeout(() => toast((remoteAtt ? 'TWO FLIGHT ATTENDANTS ON BOARD, ONE IS A PLAYER' : 'A FLIGHT ATTENDANT PATROLS THE AISLE') + ' · ' + tasks.length + ' SABOTAGE TASKS', 3), 600);
+    setTimeout(() => toast((remoteAtt ? 'THE FLIGHT ATTENDANT IS A PLAYER · DO NOT GET CAUGHT AT WORK' : 'A FLIGHT ATTENDANT PATROLS THE AISLE') + ' · ' + tasks.length + ' SABOTAGE TASKS', 3), 600);
 
     return {
       state: S,

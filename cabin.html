@@ -103,26 +103,98 @@ window.addEventListener('keydown', function (e) {
   // in the lobby the passengers and the tasks come from the flight code, so wait for it
   if (embed && !+q.get('seed')) {
     $('whereT').textContent = 'BOARDING…'; $('tasks').style.display = 'none';
-    window.addEventListener('message', (e) => { const d = e.data; if (d && d.awf === 1 && d.st && d.st.f && (d.st.ph === 'intro' || d.st.ph === 'flight')) location.replace('cabin.html?embed=1&role=' + role + '&seed=' + (+d.st.f)); });
+    window.addEventListener('message', (e) => { const d = e.data; if (d && d.awf === 1 && d.st && d.st.f && (d.st.ph === 'intro' || d.st.ph === 'flight')) go(d.st); });
     return;
   }
+  // (re)load for a flight: the code seeds the cabin, sab and att say which cabin seats are taken
+  function go(st) { location.replace('cabin.html?embed=1&role=' + role + '&seed=' + (+st.f) + (st.sab ? '&sab=1' : '') + (st.att ? '&att=1' : '') + (q.get('cockpit') ? '&cockpit=' + encodeURIComponent(q.get('cockpit')) : '')); }
   const seed = +q.get('seed') || 1000 + Math.floor(Math.random() * 9000);
   const cabin = window.KKCabin && KKCabin.start($('cab'), { seed, role, seat: q.get('seat') });
   if (!cabin) { $('whereT').textContent = 'NO 3D ON THIS DEVICE'; return; }
   const realCockpit = !!(window.__cockpit && cabin.setPass && cabin.places.cockpit);   // js/cabin-cockpit.js is on board: the room behind the door is the pilot's cockpit
   try { window.focus(); } catch (e) {}
 
-  // In the lobby the saboteur seat is played with Batu's first-person layer (js/roles/intruder-play.js):
-  // it brings its own walking, task screen, effects and sounds. This page only connects it to the flight.
-  if (embed && role === 'saboteur' && q.get('plain') !== '1') {
+  // Both cabin seats are played in first person: the intruder with Batu's layer (js/roles/intruder-play.js), the flight
+  // attendant with js/roles/attendant-play.js, which borrows that layer's toolkit. They bring their own walking, task screen,
+  // effects and sounds; this page connects them to the flight and to each other. ?plain=1 gives the old click-to-walk runner.
+  const other = role === 'saboteur' ? 'attendant' : 'saboteur';
+  const otherOn = q.get(role === 'saboteur' ? 'att' : 'sab') === '1';   // is the other cabin seat taken? (the lobby says so, or the test page's &att=1 / &sab=1)
+  if (q.get('plain') !== '1') {
     const load = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
     load('js/vendor/gltf.min.js').catch(() => {}).then(() => load('js/roles/intruder-models.js')).catch(() => {}).then(() => load('js/roles/intruder-play.js'))
-      .then(() => { if (window.KKIntruder) intruder(); else plain(); }).catch(() => plain());
+      .then(() => (role === 'attendant' ? load('js/roles/attendant-play.js') : null))
+      .then(() => { if (role === 'saboteur' && window.KKIntruder) intruder(); else if (role === 'attendant' && window.KKAttendant) attendant(); else plain(); }).catch((e) => { console.warn('cabin layer', e); plain(); });
   } else plain();
+
+  /* The link between the two cabin seats: in the lobby the messages go up to js/net.js (cab k:'link') and come back from the
+     other seat; on the test page a BroadcastChannel joins two tabs (cabin.html?role=saboteur&att=1 and ?role=attendant&sab=1). */
+  function makeLink() {
+    if (!embed) return window.KKLink ? KKLink.local(q.get('room') || 'test') : null;
+    const subs = []; let poseT = 0;
+    window.addEventListener('message', (e) => {
+      const d = e.data; if (!d || d.awf !== 1 || !d.cab || d.cab.k !== 'link' || d.cab.role === role || !d.cab.m) return;
+      subs.forEach((f) => { try { f(d.cab.m); } catch (er) { console.error(er); } });
+    });
+    return {
+      send(m) {
+        if (!m || !m.t) return;
+        if (m.t === 'pose') { const now = performance.now(); if (now - poseT < 140) return; poseT = now; }   // seven a second is plenty
+        up({ k: 'link', m });
+      },
+      on(f) { subs.push(f); },
+    };
+  }
+  // the cockpit door: what this seat does to it goes to the lobby (the pilot keeps the state and sends it back as st.dr)
+  const rawDoor = cabin.setDoor.bind(cabin); let myDoor = false, theirDoor = false;
+  cabin.setDoor = function (v) { v = !!v; if (v !== myDoor) { myDoor = v; up({ k: 'door', open: v }); } rawDoor(myDoor || theirDoor); };
+  function doorFromLobby(dr) { theirDoor = !!dr && !myDoor; rawDoor(myDoor || theirDoor); }
+  // the flight's phase changed: the layers play the end inside the cabin
+  function phaseTo(play, ph) { if (ph === 'landing' || ph === 'won') play.land(); else if (ph === 'crashed') play.crash(); }
+
+  function attendant() {
+    document.body.classList.add('sabplay');
+    const link = makeLink();
+    if (realCockpit) cabin.setPass(true);
+    let phase = embed ? 'intro' : 'flight', wasIn = false;
+    const play = KKAttendant.start(cabin, {
+      seed, canvas: $('cab'), link, intruder: otherOn,
+      onTask: (m) => up(m),
+      onCockpit: (inside) => { if (inside !== wasIn) { wasIn = inside; up({ k: 'cockpit', in: inside }); } },
+      onDoor: () => {},
+      onCaught: () => {},
+    });
+    if (!play) { plain(); return; }
+    play.setFlight({ flying: !embed });
+    // the test page: a sabotage picked in the test controls, or played from a second tab (cabin.html?role=saboteur&att=1)
+    if (!embed) {
+      const sel = $('dSab'), pool = (KK.ROLES && KK.ROLES.attendant) || { tasks: [] }; $('dSabL').style.display = ''; $('dbg').style.zIndex = 70;
+      sel.innerHTML = '<option value="">A SABOTAGE HAPPENS…</option>' + pool.tasks.filter((t) => t.undoes).map((t) => '<option value="' + t.undoes + '">' + String(t.undoes).toUpperCase() + ' → ' + t.title + '</option>').join('');
+      sel.onchange = () => { if (sel.value) play.trouble(sel.value); sel.value = ''; sel.blur(); };
+      $('dUnrest').oninput = (e) => play.setFlight({ unrest: e.target.value / 100 });
+      if (link) link.on((m) => { if (m.t === 'task') { play.trouble(m.id); if (m.id === 'cockpit') play.cracked(12); } });
+    }
+    let posT = 0, lastAt = '';
+    setInterval(() => {   // the old position report (the pilot's lobby code and older pages read it)
+      const P = cabin.player, here = P.seat ? P.seat.id : P.place;
+      posT += 0.5; if (here !== lastAt || posT > 3) { posT = 0; lastAt = here; up({ k: 'pos', at: here }); }
+    }, 500);
+    window.addEventListener('message', (e) => {
+      const d = e.data; if (!embed || !d || d.awf !== 1) return;
+      if (d.cab && d.cab.role === 'saboteur' && d.cab.k === 'task') { play.trouble(d.cab.id); if (String(d.cab.id).toLowerCase() === 'cockpit') play.cracked(12); }
+      if (!d.st) return;
+      const st = d.st;
+      if (st.f && +st.f !== seed && (st.ph === 'intro' || st.ph === 'flight')) { go(st); return; }
+      play.setFlight({ clock: st.tl, total: st.tot, unrest: st.u, turb: st.tb, intruder: !!st.sab, flying: st.ph === 'flight' });
+      doorFromLobby(st.dr);
+      if (st.ph && st.ph !== phase) { phase = st.ph; phaseTo(play, phase); }
+    });
+    window.__cabin = { cabin, play, tasks: play.state.tasks, seed, role, embed, link, get clock() { return play.state.clock; }, get phase() { return phase; } };
+  }
 
   function intruder() {
     document.body.classList.add('sabplay');   // not 'ix': that class belongs to the layer's own boxes
-    const play = KKIntruder.start(cabin, { seed, mode: (KK.codeMode && KK.codeMode(seed)) || 'mayday', canvas: $('cab'), seat: cabin.player.seat && cabin.player.seat.id, clock: 420 });   // the flight code's first digit is the mode
+    const link = otherOn ? makeLink() : null;   // a player in the attendant seat: no AI attendant, the two screens talk
+    const play = KKIntruder.start(cabin, { seed, mode: (KK.codeMode && KK.codeMode(seed)) || 'mayday', canvas: $('cab'), seat: cabin.player.seat && cabin.player.seat.id, clock: 420, link });   // the flight code's first digit is the mode
     const sent = {}; let phase = 'intro', lastAt = '', posT = 0, over = false;
     const endCard = (cls, html) => { over = true; document.body.classList.add('over'); $('end').className = 'hud show ' + cls; $('end').innerHTML = html; try { document.exitPointerLock(); } catch (e) {} };
     setInterval(() => {
@@ -143,8 +215,9 @@ window.addEventListener('keydown', function (e) {
       }
       if (!d.st) return;
       const st = d.st;
-      if (st.f && +st.f !== seed && (st.ph === 'intro' || st.ph === 'flight')) { location.replace('cabin.html?embed=1&role=' + role + '&seed=' + (+st.f)); return; }
+      if (st.f && +st.f !== seed && (st.ph === 'intro' || st.ph === 'flight')) { go(st); return; }
       if (st.tl != null && !play.state.done) play.state.clock = Math.max(1, +st.tl);   // the real time to impact
+      doorFromLobby(st.dr);
       if (st.ph && st.ph !== phase) {
         phase = st.ph;
         // the layer plays the end inside the cabin itself: the dive and the impact, or the landing (older layers: our own card)
@@ -152,7 +225,7 @@ window.addEventListener('keydown', function (e) {
         else if (phase === 'crashed') { if (play.crash) play.crash(); else { endCard('ok', '<b>AIRCRAFT LOST</b>That was your doing.'); try { play.stop(); } catch (er) {} } }
       }
     });
-    window.__cabin = { cabin, play, tasks: play.state.tasks, seed, role, embed, get clock() { return play.state.clock; }, get phase() { return phase; } };
+    window.__cabin = { cabin, play, tasks: play.state.tasks, seed, role, embed, link, get clock() { return play.state.clock; }, get phase() { return phase; } };
   }
 
   function plain() {
@@ -289,7 +362,7 @@ window.addEventListener('keydown', function (e) {
     const d = e.data; if (!embed || !d || d.awf !== 1) return;
     if (d.st) {
       const st = d.st;
-      if (st.f && +st.f !== seed && (st.ph === 'intro' || st.ph === 'flight')) { location.replace('cabin.html?embed=1&role=' + role + '&seed=' + (+st.f)); return; }
+      if (st.f && +st.f !== seed && (st.ph === 'intro' || st.ph === 'flight')) { go(st); return; }
       if (st.tl != null) clock = +st.tl;
       if (st.sab != null) sabSeat = !!st.sab;
       cabin.setState({ unrest: +st.u || 0, turb: +st.tb || 0 });

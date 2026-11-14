@@ -1,7 +1,7 @@
 /* ARE WE FALLING? — the FLIGHT ATTENDANT seat (Efe).
    The flight attendant works in the cabin and undoes what the intruder breaks. Every finished task gives the pilot time.
 
-   This file DESCRIBES the task pool and brings one small effect of its own (the kiss, at the end of the file).
+   This file DESCRIBES the task pool. js/roles/attendant-play.js plays it in first person (the lobby's seat).
    cabin.html runs the tasks, js/net.js carries them through the lobby, js/game.js applies them to the flight.
    Try it:  cabin.html?role=attendant            malfunctions turn up by themselves, the picker in the test controls
                                                  plays a sabotage; add &intruder=1 for a cabin without malfunctions
@@ -9,7 +9,8 @@
    Design rules:
    - One task for every sabotage in js/roles/saboteur.js, and it gives back exactly what that sabotage took
      (the intruder's tasks cost 2 or 3 seconds, so these give 2 or 3). Fixing takes a little longer than breaking.
-   - One task that answers to nothing: KISS THE PILOT. It only adds time.
+   - One task that answers to nothing: COFFEE FOR THE CAPTAIN. Poured in the galley, handed over in the cockpit; it sobers the
+     captain up and adds a little time. (KISS THE PILOT was here until the jam build; Orhun took it out after the jam.)
 
    Fields (all of them are read by cabin.html unless it says otherwise):
      id, title, place, brief, seconds, effect   as in ROADMAP.md (effect = seconds added to the time to impact, positive here)
@@ -17,14 +18,15 @@
      undoes   the id of the sabotage this task answers. A pool with `undoes` is not dealt at random: the task comes
               onto the list when the intruder finishes that sabotage. With no intruder on board the same trouble
               turns up by itself now and then, as a malfunction that costs no time.
-     always   true: on the list from the start of every flight (the kiss).
+     always   true: on the list from the start of every flight (the coffee).
+     fetch    a place to go first (the coffee: the galley), then `place` (the cockpit); brief2 is the brief for the second leg.
+     near     the name of a thing the intruder planted (intruder_device, intruder_emp): the seat must be in that row or the next.
      once     true: can be done only once a flight; without it a finished task comes back when its trouble does.
      clears   the effects of that sabotage that end when the task is done: 'smoke', 'turbulence', 'blackout',
               'masks', 'panic', 'calls', 'block', 'door' (the same names as `fx` in saboteur.js). They end on the
               intruder's screen, and 'panic' also calms the pilot's passengers a little more.
-     anim     a screen effect this file plays itself, through KK.ROLES.attendant.play(anim, ctl); today only 'kiss'.
      fx       [{ type: 'nocalm' }]: every finished flight attendant task calms the passengers a little (js/game.js),
-              a task with this does not.
+              a task with this does not. [{ type: 'coffee' }]: the captain sobers up.
      sound    the voice line in audio/ that plays when the task is finished.
      spot     where exactly inside the place. Read by nobody yet (for a marker).
      perFlight is not used for this pool any more (it has `undoes`).
@@ -67,6 +69,7 @@
         input: 'hold', seconds: 6,
         effect: 3,
         clears: ['blackout', 'panic'],
+        near: 'intruder_emp',
         once: true,
       },
       {
@@ -88,6 +91,7 @@
         input: 'hold', seconds: 6,
         effect: 3,
         clears: ['panic'],
+        near: 'intruder_device',
         sound: 'att_calm',
       },
       {
@@ -152,54 +156,17 @@
       },
       // ---------- on its own ----------
       {
-        id: 'kiss',
-        title: 'KISS THE PILOT',
-        place: 'door', spot: 'through the cockpit door, the left seat',
-        brief: 'Slip into the cockpit and kiss the pilot on the cheek. Good for the nerves: it buys time.',
+        id: 'coffee',
+        title: 'COFFEE FOR THE CAPTAIN',
+        place: 'cockpit', fetch: 'galley', spot: 'pour it in the front galley, hand it over beside the left seat',
+        brief: 'Pour a strong black coffee in the front galley. The captain has been at the whiskey.',
+        brief2: 'Carry the cup into the cockpit (the door opens for the crew) and hand it to the captain.',
         input: 'hold', seconds: 2,
-        effect: 5,
-        always: true, once: true,
-        anim: 'kiss',
-        fx: [{ type: 'nocalm' }],       // time only: this one does not calm the passengers
+        effect: 3,
+        always: true,
+        fx: [{ type: 'coffee' }, { type: 'nocalm' }],   // sobers the captain up (js/game.js); time only, the passengers do not notice
       },
     ],
   };
 
-  // ---------- the kiss: the screen goes dark and a few lipstick marks appear ----------
-  // Starts the moment the interaction key goes down on KISS THE PILOT, stays while the task is worked on, then clears.
-  if (!root.document) return;
-  const doc = root.document;
-  let layer = null, running = false;
-  function build() {
-    if (layer) return layer;
-    const st = doc.createElement('style');
-    st.textContent = '#attKiss{position:fixed;inset:0;z-index:9999;background:#000;opacity:0;pointer-events:none;transition:opacity .25s;overflow:hidden}' +
-      '#attKiss.on{opacity:1}#attKiss span{position:absolute;line-height:1;transform:translate(-50%,-50%) scale(0) rotate(var(--r));opacity:0;transition:transform .28s cubic-bezier(.2,1.6,.4,1),opacity .15s}' +
-      '#attKiss span.in{transform:translate(-50%,-50%) scale(1) rotate(var(--r));opacity:1}';
-    doc.head.appendChild(st);
-    layer = doc.createElement('div'); layer.id = 'attKiss'; doc.body.appendChild(layer);
-    return layer;
-  }
-  // kiss({ hold }): hold is a function that says whether to stay dark (the task is still being worked on). Returns nothing.
-  function kiss(opts) {
-    if (running) return; running = true;
-    const el = build(); el.innerHTML = '';
-    const spots = [[50, 46, -8, 24], [27, 30, 14, 15], [72, 28, -20, 17], [33, 70, -16, 13], [69, 68, 10, 19]];   // x %, y %, turn, size vmin
-    spots.forEach((s, i) => {
-      const m = doc.createElement('span'); m.textContent = '💋';
-      m.style.left = s[0] + '%'; m.style.top = s[1] + '%'; m.style.fontSize = s[3] + 'vmin'; m.style.setProperty('--r', s[2] + 'deg');
-      el.appendChild(m); setTimeout(() => m.classList.add('in'), 220 + i * 170);
-    });
-    el.classList.add('on');
-    const t0 = Date.now(), hold = opts && opts.hold;
-    const iv = setInterval(() => {
-      const t = Date.now() - t0, state = hold ? hold() : 'done';   // 'working', 'done' or 'left'
-      if (state === 'working' && t < 15000) return;
-      if (state === 'done' && t < 1900) return;                    // let every mark land before the lights come back
-      clearInterval(iv); el.classList.remove('on'); setTimeout(() => { el.innerHTML = ''; running = false; }, 300);
-    }, 60);
-  }
-  // the cabin page calls this when the player starts working on a task that has `anim` (see anim() in cabin.html)
-  KK.ROLES.attendant.play = function (name, ctl) { if (name === 'kiss') kiss({ hold: ctl && ctl.state }); };
-  KK.ROLES.attendant.kiss = kiss;
 })(typeof window !== 'undefined' ? window : this);

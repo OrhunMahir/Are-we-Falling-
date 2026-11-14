@@ -961,7 +961,7 @@
       const d = D.next(rng); const P = new Panel(s, d.title, { symbol: syms.pop() }); P.decoy = true; d.build(P, rng); P.touch();
     });
     focus = null; restore = null; if (!guestMode) { stand(false, true); EYE.copy(SEAT); resetView(); }
-    Object.keys(visitors).forEach((r) => { visitors[r].on = false; visitors[r].f.g.visible = false; }); if (doorG) doorG.rotation.y = 0;
+    Object.keys(visitors).forEach((r) => { visitors[r].on = false; visitors[r].f.g.visible = false; }); if (doorG) doorG.rotation.y = 0; forced = false;
     out.controllers = ctrls;
     api.current = out;
     return out;
@@ -1137,8 +1137,9 @@
     if (!v) { if (!on) return; const f = makeFigure(LOOKS[role]); f.g.visible = false; scene.add(f.g); v = visitors[role] = { f, on: false, x: 0, z: 0, yaw: 0, ph: Math.random() * 6, kiss: 0 }; }
     v.on = !!on;
   }
+  let forced = false;                                       // the intruder cracked the door: it stands open with nobody in it
   function updateVisitors(dt) {
-    let open = 0;                                           // the door stands open for as long as somebody from the cabin is in here
+    let open = forced ? 1 : 0;                                           // the door stands open for as long as somebody from the cabin is in here
     Object.keys(visitors).forEach((role) => {
       const v = visitors[role], f = v.f;
       if (!f.g.visible) {                                   // still outside: they step in once the door has swung open
@@ -1230,7 +1231,8 @@
     guest, tick, visitor,
     // guest mode: where the real pilot looks (view yaw and pitch) and whether they stand
     pilot(s) { if (!s) return; if (s.yaw != null) cap.yaw = +s.yaw || 0; if (s.pitch != null) cap.pitch = +s.pitch || 0; cap.up = s.up ? 1 : 0; cap.heard = clock; },
-    kiss() { const v = visitors.attendant; if (v && v.f.g.visible) v.kiss = 1.1; },   // the flight attendant in the cockpit leans in
+    kiss() { const v = visitors.attendant; if (v && v.f.g.visible) v.kiss = 1.1; },   // the flight attendant in the cockpit leans in (hands the captain a coffee)
+    setDoor(v) { forced = !!v; },
     figures() { return { captain, visitors }; },
     every(sec, fn) { tickers.push({ every: sec, acc: sec, fn }); },
     pickAt(x, y) { const h = pick(x, y); return h && { panel: h.panel && h.panel.title, ctrl: h.ctrl && h.ctrl.name }; },
