@@ -109,7 +109,7 @@
         if (!done) { done = true; clearTimeout(to); try { p.destroy(); } catch (x) {} rej(e); return; }
         if (p !== N.peer) return;
         if (e && e.type === 'peer-unavailable') { Object.keys(pending).forEach((id2) => { if (String(e.message || '').indexOf(id2) >= 0) pending[id2](); }); return; }
-        if (e && (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error' || e.type === 'socket-closed')) toast('Connection to the lobby service is unstable.');
+        if (e && (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error' || e.type === 'socket-closed')) { clearTimeout(p.awfT); p.awfT = setTimeout(() => { if (N.peer === p && !p.destroyed && p.disconnected) toast('Connection to the lobby service is unstable.'); }, 6000); }
       });
     });
   }
@@ -117,7 +117,12 @@
     N.peer = p;
     p.on('connection', onConnection);
     p.on('call', onCall);
-    p.on('disconnected', () => { if (N.peer === p && !p.destroyed) { try { p.reconnect(); } catch (e) {} } });
+    let tries = 0;
+    p.on('open', () => { tries = 0; });
+    p.on('disconnected', () => {   // come back after a moment, a little longer each time
+      if (N.peer !== p || p.destroyed) return;
+      setTimeout(() => { if (N.peer === p && !p.destroyed && p.disconnected) { try { p.reconnect(); } catch (e) {} } }, Math.min(8000, 500 * Math.pow(2, tries++)));
+    });
     try { p.socket.on('message', (m) => { if (N.peer === p && m && m.type === 'CANDIDATE' && m.payload && m.payload.awf) onRelay(String(m.src), m.payload.awf); }); } catch (e) {}
   }
   function dropPeer() {

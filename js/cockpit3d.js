@@ -377,7 +377,7 @@
     const cap = new T.Mesh(new T.CylinderGeometry(0.0185, 0.0185, 0.03, 20), new T.MeshPhongMaterial({ color: '#c9a54a', specular: '#fff3c0', shininess: 90 })); cap.position.y = 0.288; g.add(cap);
     const seal = new T.Mesh(new T.CylinderGeometry(0.0152, 0.0152, 0.03, 20), lam('#7a1410')); seal.position.y = 0.245; g.add(seal);
     const proxy = new T.Mesh(new T.CylinderGeometry(0.07, 0.07, 0.34, 8), new T.MeshBasicMaterial()); proxy.position.set(home.x, 1.3, home.z); proxy.visible = false; scene.add(proxy);
-    const ctrl = { name: 'WHISKEY · TAKE A SIP', x: 0, y: 0, w: 0, h: 0, panel: null, world(out) { return (out || new T.Vector3()).copy(home).setY(home.y + 0.2); }, press() { if (drinkT <= 0 && (!hooks.onDrink || hooks.onDrink() !== false)) drinkT = 1.5; } };
+    const ctrl = { name: 'WHISKEY · TAKE A SIP', x: 0, y: 0, w: 0, h: 0, panel: null, world(out) { return (out || new T.Vector3()).copy(home).setY(home.y + 0.2); }, press() { if (drinkT <= 0 && smokeT <= 0 && (!hooks.onDrink || hooks.onDrink() !== false)) drinkT = 1.5; } };
     api.bottle = ctrl; proxy.userData.ctrl = ctrl; propMeshes.push(proxy); pickMeshes.push(proxy);
     scene.add(g); bottle = { g, home, liquid };
   }
@@ -421,7 +421,7 @@
     const puffs = []; for (let i = 0; i < 40; i++) { const sp = mk(); sp.userData = { life: 1, max: 1, v: new T.Vector3(), s0: 0, s1: 0, a: 0 }; puffs.push(sp); }
     const haze = []; for (let i = 0; i < 16; i++) { const sp = mk(); const sc = 0.9 + Math.random() * 1.1; sp.scale.set(sc * 1.4, sc, 1); sp.userData = { x: -1.3 + Math.random() * 2.6, y: 0.85 + Math.random() * 1.1, z: -1.0 + Math.random() * 1.2, a: 0.09 + Math.random() * 0.1 }; sp.position.set(sp.userData.x, sp.userData.y, sp.userData.z); haze.push(sp); }
     const proxy = new T.Mesh(new T.CylinderGeometry(0.075, 0.075, 0.13, 8), new T.MeshBasicMaterial()); proxy.position.set(home.x, home.y + 0.05, home.z); proxy.visible = false; scene.add(proxy);
-    const ctrl = { name: 'ASHTRAY · HAVE A SMOKE', x: 0, y: 0, w: 0, h: 0, panel: null, world(out) { return (out || new T.Vector3()).copy(home).setY(home.y + 0.05); }, press() { if (smokeT <= 0 && (!hooks.onSmoke || hooks.onSmoke() !== false)) { smokeT = SMOKE_DUR; smokeHand.hide = hands.find((h) => h.ctrl === ctrl) || hands[0]; smokeHand.hide.phase = 'rest'; smokeHand.hide.cb = null; smokeHand.hide.ctrl = null; smokeHand.hide.reachK = 0; } } };
+    const ctrl = { name: 'ASHTRAY · HAVE A SMOKE', x: 0, y: 0, w: 0, h: 0, panel: null, world(out) { return (out || new T.Vector3()).copy(home).setY(home.y + 0.05); }, press() { if (smokeT <= 0 && drinkT <= 0 && (!hooks.onSmoke || hooks.onSmoke() !== false)) { smokeT = SMOKE_DUR; smokeHand.hide = hands.find((h) => h.ctrl === ctrl) || hands[0]; smokeHand.hide.phase = 'rest'; smokeHand.hide.cb = null; smokeHand.hide.ctrl = null; smokeHand.hide.reachK = 0; } } };
     api.ashtray = ctrl; proxy.userData.ctrl = ctrl; propMeshes.push(proxy); pickMeshes.push(proxy);
     ashtray = { cig, ember, emberMat, glow, rest, restQ, puffs, haze, wt: 0, blown: false, tip: new T.Vector3(), held: false };
     makeSmokeHand();
@@ -489,7 +489,9 @@
   function armTo(g) {   // the sleeve runs from the cuff to a shoulder at the lower left of the view
     const arm = smokeHand.arm; _hp.set(0.004, -0.15, 0.004); g.localToWorld(_hp);
     _hp2.set(-0.3, -0.5, 0.12).applyQuaternion(camera.quaternion).add(camera.position);
-    arm.position.copy(_hp2); arm.lookAt(_hp); arm.scale.set(0.8, 0.8, Math.max(0.05, _hp2.distanceTo(_hp))); arm.visible = true;
+    const d = _hp2.distanceTo(_hp), len = Math.min(d, 0.4);   // never longer than a forearm: it used to stretch across the cockpit while the hand was at the ashtray
+    if (d > len) _hp2.sub(_hp).multiplyScalar(len / d).add(_hp);
+    arm.position.copy(_hp2); arm.lookAt(_hp); arm.scale.set(0.8, 0.8, Math.max(0.05, len)); arm.visible = true;
   }
   function dropCig() { const a = ashtray; a.held = false; scene.add(a.cig); a.cig.position.copy(a.rest); a.cig.quaternion.copy(a.restQ); }
   function endSmoke() {
