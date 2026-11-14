@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARE WE FALLING?</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/cockpit3d.css">
+<link rel="stylesheet" href="css/net.css">
+</head>
+<body>
+<div id="stage">
+
+  <!-- ================= TITLE ================= -->
+  <section id="title" class="screen show">
+    <canvas id="titleSky" width="1280" height="720"></canvas>
+    <div class="title-vignette"></div>
+    <div class="title-inner">
+      <div class="title-left">
+        <div class="eyebrow">FLIGHT RECORDER · CVR CHANNEL 1</div>
+        <h1 class="logo"><span>ARE WE</span><span class="logo-box">FALLING?</span></h1>
+        <div class="logo-sub">A TWO-PLAYER COCKPIT EMERGENCY</div>
+        <div class="tagline">One of you is in the cockpit. One of you has the handbook.<br><b>Keep talking. Land the plane.</b></div>
+
+        <div class="how">
+          <div class="how-row"><span class="how-n">1</span><span><b>PILOT</b> sits in the 3D cockpit: drag to look around, scroll to zoom, click to operate. Never shows the screen to the tower.</span></div>
+          <div class="how-row"><span class="how-n">2</span><span><b>TOWER</b> opens the emergency handbook on a phone and never shows it to the pilot.</span></div>
+          <div class="how-row"><span class="how-n">3</span><span>Hundreds of switches, a new layout every flight. Panels have no names, only pictures that change every flight. Give the tower your flight code, find the failing panels, fix them before the altitude runs out. Three mistakes and it is over.</span></div>
+        </div>
+
+        <div class="modes" id="modes"></div>
+
+        <div class="title-actions three">
+          <button id="btnFly" class="btn-primary">TAKE THE CONTROLS <small>I am the pilot</small></button>
+          <a id="btnTower" class="btn-secondary" href="manual.html" target="_blank" rel="noopener">OPEN THE HANDBOOK <small>I am the tower</small></a>
+          <button id="btnOnline" class="btn-secondary">PLAY ONLINE <small>Lobbies + voice chat</small></button>
+        </div>
+      </div>
+
+      <div class="title-right">
+        <div class="qr-card">
+          <div class="qr-head">TOWER: SCAN FOR THE HANDBOOK</div>
+          <div id="qr"></div>
+          <div class="qr-url" id="qrUrl"></div>
+          <div class="qr-foot">Works on any phone. No app, no login.</div>
+        </div>
+        <div class="title-opts">
+          <button id="btnMute" class="btn-ghost">SOUND: ON</button>
+          <button id="btnFull" class="btn-ghost">FULLSCREEN</button>
+        </div>
+      </div>
+    </div>
+    <div class="credits">Voices, sound effects and music made with ElevenLabs · HACK//OPS Game Jam Munich 2026</div>
+  </section>
+
+  <!-- ================= COCKPIT ================= -->
+  <section id="cockpit" class="screen">
+    <canvas id="view3d" width="1280" height="720"></canvas>
+    <canvas id="sky" width="1280" height="236"></canvas>
+    <div id="lidT" class="lid"></div><div id="lidB" class="lid"></div>
+    <div id="hud">
+      <div class="hud-box hud-alt"><label>ALTITUDE</label><div><span id="hudAlt">24000</span><small>FT</small></div></div>
+      <div class="hud-box hud-time"><label>TIME TO IMPACT</label><div id="hudTime">3:30</div></div>
+      <div class="hud-box hud-dmg"><label>STRUCTURE</label><div id="hudDmg"></div></div>
+    </div>
+    <div id="cabin"><label>CABIN PANIC</label><div class="bar"><i id="cabinFill"></i></div><span id="cabinTxt">QUIET</span></div>
+    <div id="booze"></div>
+    <div id="faults"></div>
+    <div id="lookAt"></div>
+    <div id="knobHint"><b>◀ ▶</b> scroll, drag sideways or press A / D to turn &nbsp;·&nbsp; <b>CLICK</b> or ENTER when done</div>
+    <div id="help"><b>DRAG</b> look around &nbsp;·&nbsp; <b>SCROLL / Q E</b> zoom &nbsp;·&nbsp; <b>CLICK</b> operate &nbsp;·&nbsp; <b>SPACE</b> face forward &nbsp;·&nbsp; <b>F</b> stand / sit</div>
+    <div class="corner">
+      <button id="btnStand" class="btn-stand">STAND UP (F)</button>
+      <div id="master" class="master">MASTER<br>WARN</div>
+      <button id="btnMute2" class="btn-mini" title="Sound">♪</button>
+      <button id="btnAbort" class="btn-mini" title="Back to title">✕</button>
+    </div>
+    <div id="flash"></div>
+    <div id="vignette"></div>
+    <div id="overlay" class="overlay"></div>
+    <div id="subtitle"></div>
+  </section>
+
+  <!-- ================= END ================= -->
+  <section id="end" class="screen">
+    <div class="end-inner">
+      <div class="end-eyebrow" id="endEyebrow"></div>
+      <h2 id="endTitle"></h2>
+      <div id="endSub"></div>
+      <div class="end-cols">
+        <div class="end-stats" id="endStats"></div>
+        <div class="end-log">
+          <div class="end-log-head">FLIGHT DATA RECORDER</div>
+          <div id="endLog"></div>
+        </div>
+      </div>
+      <div class="end-actions">
+        <button id="btnAgain" class="btn-primary">NEW FLIGHT</button>
+        <button id="btnSwap" class="btn-secondary">SWAP SEATS &amp; FLY</button>
+        <button id="btnHome" class="btn-ghost">TITLE</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/sky.js"></script>
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/gltf.min.js"></script>
+<script src="js/models.js"></script>
+<script src="js/cockpit3d.js"></script>
+<script src="js/decoys.js"></script>
+<script src="js/modules3d.js"></script>
+<script src="js/game.js"></script>
+<script src="js/vendor/peerjs.min.js"></script>
+<script src="js/net.js"></script>
+</body>
+</html>

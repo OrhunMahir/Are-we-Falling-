@@ -1,0 +1,49 @@
+/* 3D cockpit page: full-stage WebGL view with a thin HUD on top */
+#view3d { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; display: block; cursor: grab; touch-action: none; }
+#cockpit #sky { position: absolute; left: -4000px; top: 0; visibility: hidden; }
+#cockpit #hud { top: 10px; bottom: auto; padding: 0 14px; align-items: flex-start; }
+#cockpit .hud-box { min-width: 0; padding: 4px 12px 3px; background: rgba(4,7,10,.72); }
+#cockpit .hud-alt div { font-size: 30px; } #cockpit .hud-time div { font-size: 38px; }
+#cockpit #hudDmg i { width: 30px; height: 22px; } #cockpit #hudDmg { padding: 3px 0; gap: 6px; }
+#faults { position: absolute; right: 14px; top: 78px; z-index: 3; pointer-events: none; background: rgba(4,7,10,.72); border: 1.5px solid #2b3340; border-radius: 8px; padding: 6px 12px 7px; min-width: 150px; }
+#faults label { font-family: var(--mono); font-size: 9px; letter-spacing: 2.5px; color: var(--dim); display: block; margin-bottom: 3px; }
+#faults div { font-family: var(--mono); font-weight: 700; font-size: 13px; letter-spacing: 1px; color: var(--red); padding: 1px 0 1px 16px; position: relative; }
+#faults div::before { content: ""; position: absolute; left: 0; top: 6px; width: 9px; height: 6px; background: var(--red); animation: blink .45s steps(2) infinite; }
+#faults div.ok { color: var(--green); opacity: .75; text-decoration: line-through; } #faults div.ok::before { background: var(--green); animation: none; }
+#lookAt { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 4; pointer-events: none; text-align: center; opacity: 0; transition: opacity .12s; background: rgba(4,7,10,.78); border: 1.5px solid #2b3340; border-radius: 8px; padding: 5px 18px 6px; white-space: nowrap; }
+#lookAt.show { opacity: 1; } #lookAt.ctrl { border-color: #7fe3ff; }
+#lookAt small { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--dim); }
+#lookAt b { display: block; font-family: var(--mono); font-size: 19px; letter-spacing: 1.5px; color: #eaf6ff; }
+#help { position: absolute; left: 14px; bottom: 14px; z-index: 3; pointer-events: none; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: #8b97a8; background: rgba(4,7,10,.6); border-radius: 6px; padding: 5px 10px; }
+#help b { color: #dfe8f2; }
+.corner { position: absolute; right: 14px; bottom: 12px; z-index: 6; display: flex; gap: 8px; align-items: center; }
+#cockpit #subtitle { top: auto; bottom: 74px; }
+#cockpit #flash { z-index: 2; }
+#cockpit.hit { animation: none; }
+#cabin { position: absolute; left: 14px; top: 78px; z-index: 3; pointer-events: none; background: rgba(4,7,10,.72); border: 1.5px solid #2b3340; border-radius: 8px; padding: 6px 12px 7px; width: 190px; }
+#cabin label { font-family: var(--mono); font-size: 9px; letter-spacing: 2.5px; color: var(--dim); display: block; margin-bottom: 4px; }
+#cabin .bar { height: 9px; background: #12161b; border-radius: 3px; overflow: hidden; position: relative; }
+#cabin .bar::after { content: ""; position: absolute; left: 45%; top: 0; bottom: 0; width: 1px; background: #fff; opacity: .6; }
+#cabin .bar i { display: block; height: 100%; width: 0; background: var(--green); transition: width .4s; }
+#cabin.amber .bar i { background: var(--amber); } #cabin.red .bar i { background: var(--red); }
+#cabin span { font-family: var(--mono); font-weight: 700; font-size: 11px; letter-spacing: 1px; color: var(--green); display: block; margin-top: 4px; }
+#cabin.shout span { color: var(--amber); animation: blink .6s steps(2) infinite; } #cabin.shout { border-color: var(--amber); }
+#booze { position: absolute; left: 14px; top: 150px; z-index: 3; pointer-events: none; background: rgba(4,7,10,.72); border: 1.5px solid #6b4a12; border-radius: 8px; padding: 5px 12px 6px; width: 190px; display: none; }
+#booze.show { display: block; }
+#booze label { font-family: var(--mono); font-size: 9px; letter-spacing: 2.5px; color: var(--dim); display: block; }
+#booze b { font-family: var(--mono); font-size: 15px; letter-spacing: 1.5px; color: var(--amber); display: block; }
+#booze span { font-family: var(--mono); font-size: 10px; color: #a9905e; }
+
+/* drunk eyelids */
+.lid { display: none; position: absolute; left: -12%; width: 124%; height: 0; background: #000; z-index: 2; pointer-events: none; }
+#lidT { top: -40px; border-radius: 0 0 50% 50% / 0 0 110px 110px; box-shadow: 0 0 46px 34px #000; padding-top: 40px; box-sizing: content-box; }
+#lidB { bottom: -40px; border-radius: 50% 50% 0 0 / 90px 90px 0 0; box-shadow: 0 0 46px 34px #000; padding-bottom: 40px; box-sizing: content-box; }
+#faults div i { font-style: normal; font-size: 17px; margin-right: 7px; vertical-align: -2px; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.btn-stand { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.5px; font-weight: 700; padding: 7px 10px; border-radius: 14px; border: 1px solid #56617a; background: rgba(10,12,16,.8); color: #dfe6f0; cursor: pointer; white-space: nowrap; }
+.btn-stand:hover { border-color: #ffb000; color: #ffb000; }
+#faults .code { display: block; margin-top: 6px; padding-top: 5px; border-top: 1px solid #2b3340; font-family: var(--mono); font-size: 9.5px; letter-spacing: 2px; color: var(--dim); }
+#faults .code b { font-size: 19px; letter-spacing: 3px; color: #7fe3ff; margin-left: 6px; vertical-align: -2px; }
+#faults .code small { display: block; font-size: 8.5px; letter-spacing: 1px; color: #5f6b7c; }
+#knobHint { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); z-index: 5; pointer-events: none; opacity: 0; transition: opacity .15s; background: rgba(4,7,10,.85); border: 1.5px solid #7fe3ff; border-radius: 8px; padding: 8px 16px; font-family: var(--mono); font-size: 12px; letter-spacing: 1px; color: #cfe9f5; white-space: nowrap; }
+#knobHint.show { opacity: 1; } #knobHint b { color: #fff; }
+#booze { display: none !important; }

@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARE WE FALLING? — Tower Emergency Handbook</title>
+<style>
+:root { --paper: #f3efe3; --ink: #17150f; --dim: #6a6451; --line: #c9c2ab; --orange: #e85d00; --red: #c4241a; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 62px; }
+body { margin: 0; background: #2a2d33; color: var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 17px; line-height: 1.45; -webkit-text-size-adjust: 100%; }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+nav { position: sticky; top: 0; z-index: 10; background: #14161a; display: flex; gap: 6px; padding: 8px 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; border-bottom: 3px solid var(--orange); }
+nav a { flex: none; font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 13px; letter-spacing: 1px; color: #fff; text-decoration: none; padding: 9px 12px; border-radius: 6px; background: #2b3039; white-space: nowrap; }
+nav a:active { background: var(--orange); }
+main { max-width: 760px; margin: 0 auto; padding: 14px 12px 60px; }
+.cover, section { background: var(--paper); border-radius: 6px; padding: 20px 20px 22px; margin-bottom: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.45); position: relative; }
+.cover { border-top: 12px solid var(--orange); }
+.stamp { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 3px; color: var(--red); border: 2px solid var(--red); display: inline-block; padding: 3px 10px; transform: rotate(-2deg); margin-bottom: 10px; }
+h1 { font-family: Impact, "Arial Narrow Bold", "Arial Black", sans-serif; font-weight: 400; font-size: 46px; line-height: 1; margin: 0 0 4px; letter-spacing: 1px; }
+h1 span { background: var(--orange); color: #111; padding: 0 10px; border-radius: 4px; }
+.sub { font-size: 18px; color: var(--dim); margin-bottom: 12px; }
+h2 { font-family: Impact, "Arial Narrow Bold", "Arial Black", sans-serif; font-weight: 400; font-size: 30px; letter-spacing: 1px; margin: 0 0 2px; display: flex; align-items: baseline; gap: 10px; }
+h2 small { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; letter-spacing: 2px; color: var(--orange); }
+.ask { background: #fff8d9; border-left: 5px solid #e0b100; padding: 9px 12px; margin: 10px 0; font-size: 16px; }
+.ask::before { content: "ASK"; font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 11px; letter-spacing: 2px; color: #8a6d00; display: block; }
+ol, ul { padding-left: 26px; margin: 10px 0; }
+li { margin-bottom: 9px; }
+ol.rules { list-style: none; padding-left: 0; counter-reset: r; }
+ol.rules li { counter-increment: r; padding: 9px 10px 9px 46px; position: relative; border: 1px solid var(--line); border-radius: 6px; background: #fbf9f1; }
+ol.rules li::before { content: counter(r); position: absolute; left: 10px; top: 8px; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--paper); font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 15px; }
+th { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 1px; text-align: left; background: var(--ink); color: var(--paper); padding: 7px 8px; }
+td { border: 1px solid var(--line); padding: 8px; background: #fbf9f1; vertical-align: top; }
+td:first-child { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; }
+.warn { color: var(--red); font-weight: 700; margin-top: 10px; font-size: 15.5px; }
+.warn::before { content: "⚠ "; }
+.note { font-size: 15.5px; color: #3b3829; margin: 6px 0; padding-left: 16px; position: relative; }
+.note::before { content: "›"; position: absolute; left: 2px; color: var(--orange); font-weight: 700; }
+.morse { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 5px; margin: 10px 0; }
+.morse div { border: 1px solid var(--line); border-radius: 5px; background: #fbf9f1; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.morse b { font-size: 17px; } .morse span { font-size: 20px; letter-spacing: 2px; font-weight: 700; }
+.beacons { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 5px; }
+.beacons div { border: 1px solid var(--line); border-radius: 5px; background: #fbf9f1; padding: 6px 10px; display: flex; justify-content: space-between; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 17px; }
+.placard { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+.placard div { border: 1px dashed var(--dim); border-radius: 5px; padding: 7px 10px; font-size: 15px; }
+.placard b { display: block; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; letter-spacing: 1px; }
+footer { text-align: center; color: #8d94a0; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 1px; }
+@media (max-width: 480px) { h1 { font-size: 38px; } body { font-size: 16.5px; } .cover, section { padding: 16px 14px 18px; } }
+@media print {
+  body { background: #fff; font-size: 12.5px; } nav, footer { display: none; }
+  main { max-width: none; padding: 0; } .cover, section { box-shadow: none; border: 1px solid #999; break-inside: avoid; margin-bottom: 8px; padding: 10px 14px; }
+  h1 { font-size: 30px; } h2 { font-size: 20px; } li { margin-bottom: 4px; } ol.rules li { padding: 4px 8px 4px 40px; }
+}
+.sym { font-size: 24px; vertical-align: middle; margin-right: 4px; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.sym.big { font-size: 34px; letter-spacing: 2px; }
+nav a.pic { font-size: 19px; padding: 5px 11px; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+
+/* ---- tower room: the handbook is a folder on the desk of a 3D control tower ---- */
+#sky3d, #twBtns { display: none; }
+body.t3d { overflow: hidden; background: #05070a; height: 100vh; }
+body.t3d #sky3d { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
+body.t3d #twBtns { display: flex; gap: 8px; position: fixed; right: 12px; top: 12px; z-index: 30; }
+#twBtns button, #btn3d { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 11.5px; letter-spacing: 1.5px; color: #fff; background: rgba(10,13,17,.78); border: 1px solid #55607a; border-radius: 6px; padding: 9px 12px; cursor: pointer; }
+#twBtns button:hover, #btn3d:hover { background: rgba(255,106,0,.85); border-color: #ff6a00; color: #111; }
+#btn3d { flex: none; margin-left: auto; display: none; }
+body.t3d #folder { position: fixed; left: 47%; top: 49%; width: min(62vw, 111vh); height: 82vh; --p: 800px; display: flex; flex-direction: column; z-index: 20;
+  transform: translate(-50%, -50%) perspective(var(--p)) rotateX(22deg); transition: transform .75s cubic-bezier(.4,.1,.2,1), opacity .45s;
+  background: linear-gradient(180deg, #5d3f24, #47301b); border-radius: 10px; padding: 30px 14px 14px;
+  box-shadow: 0 3px 0 #38240f, 0 7px 0 #2a1a0b, 0 50px 90px rgba(0,0,0,.75), -30px 30px 60px rgba(0,0,0,.35); }
+body.t3d #folder::before { content: ""; position: absolute; left: 50%; top: 4px; width: 210px; height: 34px; transform: translateX(-50%); border-radius: 7px; z-index: 6;
+  background: linear-gradient(180deg, #eef1f4, #8f969e 42%, #cfd5db 56%, #70767e); box-shadow: 0 3px 6px rgba(0,0,0,.6), inset 0 1px 0 #fff; }
+body.t3d #folder::after { content: "EMERGENCY HANDBOOK · TOWER COPY"; position: absolute; left: 18px; top: 9px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 9.5px; letter-spacing: 2px; font-weight: 700; color: #d9b98a; }
+body.t3d.peek #folder { transform: translate(-50%, 45vh) perspective(var(--p)) rotateX(64deg); opacity: 0; pointer-events: none; }
+body.t3d nav { position: absolute; left: 100%; top: 44px; width: 132px; display: flex; flex-direction: column; gap: 5px; padding: 0; background: none; border: 0; overflow: visible; }
+body.t3d nav a { font-size: 11.5px; padding: 8px 10px 8px 12px; border-radius: 0 8px 8px 0; background: #e6dcc0; color: #3a2d17; box-shadow: 2px 3px 0 rgba(0,0,0,.4); margin-left: -3px; transition: transform .15s; }
+body.t3d nav a:hover { transform: translateX(5px); }
+body.t3d nav a.hot { background: var(--orange); color: #111; }
+body.t3d nav a.cold { opacity: .6; }
+body.t3d nav a[aria-current] { background: #fff; color: #111; transform: translateX(9px); opacity: 1; }
+body.t3d nav a.hot[aria-current] { background: #ffd24a; }
+body.t3d main { flex: 1; overflow-y: auto; max-width: none; margin: 0; padding: 0; background: var(--paper); border-radius: 3px; box-shadow: 3px 3px 0 #d6cdb4, 6px 6px 0 #c7bea5, 0 0 0 1px rgba(0,0,0,.25); }
+body.t3d .page { background: radial-gradient(130% 80% at 85% 0%, #fffaf0, var(--paper) 55%, #e9dfc6); }
+body.t3d .cover, body.t3d section { display: none; margin: 0; border-radius: 0; box-shadow: none; min-height: 100%; }
+body.t3d .page.active { display: block; }
+body.t3d footer { display: none; }
+#flipBox { position: absolute; left: 14px; right: 14px; overflow: hidden; pointer-events: none; perspective: 1700px; perspective-origin: 30% 40%; display: none; z-index: 5; }
+#flipBox .ghost { position: absolute; inset: 0; overflow: hidden; background: var(--paper); transform-origin: left center; animation: pageflip .62s cubic-bezier(.45,.05,.7,.4) forwards; box-shadow: 8px 0 30px rgba(0,0,0,.45); backface-visibility: hidden; }
+#flipBox .ghost > * { display: block !important; margin: 0; box-shadow: none; }
+@keyframes pageflip { 0% { transform: rotateY(0deg); filter: brightness(1); } 60% { filter: brightness(.82); } 100% { transform: rotateY(-108deg); filter: brightness(.55); } }
+.codebox { background: #14161a; color: #fff; border-radius: 8px; padding: 14px 16px; margin: 14px 0 16px; border: 2px solid var(--orange); }
+.codebox label { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 12px; letter-spacing: 2.5px; color: var(--orange); display: block; margin-bottom: 6px; }
+.codebox .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.codebox input { width: 132px; font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 34px; letter-spacing: 6px; text-align: center; padding: 6px 4px; border-radius: 6px; border: 2px solid #55607a; background: #0a0c0f; color: #ffd24a; outline: none; }
+.codebox input:focus { border-color: var(--orange); }
+.codebox .hint { font-size: 15px; color: #c9cfdb; flex: 1; min-width: 180px; }
+.codebox .hint b { color: #fff; }
+.codebox table { margin-top: 12px; background: #1d2026; color: #fff; }
+.codebox th { background: #0a0c0f; color: #9aa3b5; }
+.codebox td { border-color: #333842; padding: 6px 10px; font-size: 16px; background: #1d2026; vertical-align: middle; }
+.codebox td.p { white-space: nowrap; font-weight: 700; }
+.codebox td .sym { font-size: 30px; }
+.codebox td a { color: #ffb066; font-weight: 700; }
+.codebox tr.extra td { color: #c9cfdb; }
+.onflight { background: #14161a; color: #fff; border-radius: 6px; padding: 8px 12px; margin: 8px 0 10px; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+.onflight .sym { font-size: 34px; margin: 0; }
+.onflight b { color: #ffd24a; }
+.onflight.off { background: #d8d2bd; color: #5a5644; }
+.onflight.off b { color: inherit; }
+nav a.hot { background: var(--orange); color: #111; }
+nav a.cold { opacity: .45; }
+</style>
+</head>
+<body>
+<canvas id="sky3d"></canvas>
+<div id="twBtns"><button id="btnPeek" title="SPACE">LOOK OUT THE WINDOW</button><button id="btnPlain">PLAIN HANDBOOK</button></div>
+<div id="folder">
+<nav id="nav"></nav>
+<div id="flipBox"></div>
+<main>
+  <div class="cover" id="top">
+    <div class="stamp">TOWER EYES ONLY</div>
+    <h1>ARE WE <span>FALLING?</span></h1>
+    <div class="sub">Tower Emergency Handbook · Munich Approach</div>
+    <p>An aircraft is falling out of the sky and <b>you are the only one with the handbook</b>. The pilot can see the cockpit but has no idea what to do. You know what to do but cannot see the cockpit.</p>
+    <div class="codebox">
+      <label>FLIGHT CODE · ASK THE PILOT</label>
+      <div class="row"><input id="code" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off"><div class="hint" id="codeHint">Type the <b>four digits</b> the pilot reads to you. In an online lobby the code arrives by itself.</div></div>
+      <div id="codeOut"></div>
+    </div>
+    <ul>
+      <li><b>Never show this handbook to the pilot</b>, and never look at the pilot's screen. Use your voice.</li>
+      <li>The cockpit has <b>about eighty panels</b> and hundreds of switches. <b>No panel has a name.</b> Each one only carries a <b>small picture</b> in its top left corner, and the pictures are <b>dealt again on every flight</b>.</li>
+      <li>Only a few systems are failing. The pilot sees a list called <b>FAILED SYSTEMS</b> and a four-digit <b>FLIGHT CODE</b> in the top right corner. Ask for the code and type it in above: the handbook then shows <b>which picture marks each failed panel on this flight</b>.</li>
+      <li><b>You tell the pilot which picture to look for</b> ("find the bell panel"). A small <b>red light blinks</b> in the top right corner of a failing panel. Panels sit in a <b>different place on every flight</b>: front, ceiling, floor console, side walls, even the wall behind the seat. Tell the pilot to look around and zoom in.</li>
+      <li>Panels on the <b>walls behind the seats</b> are out of reach from the seat. The pilot has to <b>stand up (F key)</b> to use them, and <b>sit down again (F)</b> to use anything at the front.</li>
+      <li>All the other panels have pictures too. Touching them does nothing, but it wastes time. <b>Knobs</b>: the pilot clicks a knob, the view moves in, then turns it with the scroll wheel, by dragging sideways or with A and D, and clicks again to let go.</li>
+      <li>There is a <b>bottle of whiskey</b> on top of the instrument panel. Every sip buys the pilot <b>8 seconds</b>, but the cockpit gets blurry and the labels hard to read for a while. Six sips and the bottle is empty. Decide together when it is worth it.</li>
+      <li>A wrong action costs altitude. <b>Three wrong actions</b> and the aircraft is lost.</li>
+      <li>Every flight is different. Do not guess from the last one.</li>
+    </ul>
+    <p style="margin-bottom:0"><b>The placard.</b> One panel is the aircraft data placard. It sits in the middle of the front instrument panel, straight ahead of the pilot, and its picture is in the flight code table once you have the code. Several chapters need its facts, so ask for them first:</p>
+    <div class="placard">
+      <div><b>FLIGHT</b>e.g. KK 519. You usually need the last digit.</div>
+      <div><b>REGISTRATION</b>e.g. D-AASK. You usually need the last three letters.</div>
+      <div><b>SOULS ON BOARD</b>People in the aircraft.</div>
+      <div><b>APU and ICE lights</b>Each one is either lit or dark.</div>
+    </div>
+  </div>
+  <div id="chapters"></div>
+  <footer>ARE WE FALLING? · HACK//OPS GAME JAM MUNICH 2026</footer>
+</main>
+</div>
+<script src="js/rules.js"></script>
+<script>
+(function () {
+  var KK = window.KK, nav = document.getElementById('nav'), box = document.getElementById('chapters');
+  var html = '', navHtml = '<a href="#top">START</a>';
+  KK.ORDER.forEach(function (id, n) {
+    var m = KK.MODULES[id], d = m.manual;
+    navHtml += '<a href="#' + id + '" data-id="' + id + '">' + m.short + '</a>';
+    html += '<section id="' + id + '"><h2>' + m.title + ' <small>CHAPTER ' + (n + 1) + '</small></h2><div class="onflight off" data-id="' + id + '"></div>';
+    html += '<div class="ask">' + d.ask + '</div><p>' + d.intro + '</p>';
+    if (d.morse) {
+      html += '<div class="morse">' + Object.keys(d.morse).map(function (k) {
+        return '<div><b>' + k + '</b><span>' + d.morse[k].replace(/\./g, '•').replace(/-/g, '–') + '</span></div>';
+      }).join('') + '</div><p class="note">• is a short flash, – is a long flash.</p>';
+      html += '<div class="beacons">' + d.table.rows.map(function (r) { return '<div><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; }).join('') + '</div>';
+    } else if (d.table) {
+      html += '<table><tr>' + d.table.head.map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr>' +
+        d.table.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
+    }
+    if (d.list) html += (d.plain ? '<ul>' : '<ol class="rules">') + d.list.map(function (x) { return '<li>' + x + '</li>'; }).join('') + (d.plain ? '</ul>' : '</ol>');
+    (d.notes || []).forEach(function (x) { html += '<div class="note">' + x + '</div>'; });
+    if (d.warn) html += '<div class="warn">' + d.warn + '</div>';
+    html += '</section>';
+  });
+  var C = KK.CABIN;
+  navHtml += '<a href="#cabin" data-id="pa">PASSENGERS</a>';
+  html += '<section id="cabin"><h2>PASSENGERS <small>ALL FLIGHT LONG</small></h2><div class="onflight off" data-id="pa"></div>';
+  html += '<div class="ask">The passengers get restless: the longer the flight and the more mistakes, the faster. When they start <b>shouting through the cockpit door</b>, ask the pilot <b>what they are shouting about</b>.</div>';
+  html += '<p>The pilot calms them with an announcement on the <b>announcement panel</b> (it is not a failure, so it is not on the pilot\'s list; its picture for this flight is shown above and on the START page). If nobody answers and the <b>CABIN PANIC</b> bar fills up, the cabin erupts and the aircraft <b>loses ' + C.PANIC_PENALTY + ' seconds</b> of altitude.</p>';
+  html += '<table><tr><th>What the pilot hears</th><th>Announcement</th></tr>' + C.COMPLAINTS.map(function (c, i) { return '<tr><td>' + c.hear + '</td><td><b>' + C.PA[i].key + '</b></td></tr>'; }).join('') + '</table>';
+  html += '<div class="warn">Passengers never believe the same announcement <b>twice in a row</b>. If the table gives the announcement the pilot pressed last time (right or wrong), use the <b>next one down the table</b> instead. After DRINKS comes WEATHER.</div>';
+  html += '<div class="note">A wrong announcement is not a mistake against the aircraft, but the cabin gets louder. The LISTEN button on the panel repeats the shouting.</div></section>';
+  navHtml += '<button id="btn3d">3D TOWER</button>';
+  nav.innerHTML = navHtml; box.innerHTML = html;
+
+  // ---------- flight code: which picture marks which panel on this flight ----------
+  var codeIn = document.getElementById('code'), codeOut = document.getElementById('codeOut'), codeHint = document.getElementById('codeHint'), curCode = null;
+  function symHtml(sy) { return '<span class="sym">' + sy[0] + '</span> ' + sy[1]; }
+  function setCode(v, fromLink) {
+    var code = parseInt(v, 10), mode = KK.codeMode(code);
+    if (!(code >= 1000 && code <= 9999) || !mode) { if (curCode !== null) { curCode = null; paint(null); } return false; }
+    if (code === curCode) return true;
+    curCode = code; if (fromLink || codeIn.value !== String(code)) codeIn.value = String(code);
+    try { sessionStorage.setItem('awf_code', String(code)); } catch (e) {}
+    var flight = KK.genFlight(code, mode); paint({ flight: flight, sy: KK.assignSymbols(flight), mode: mode, link: fromLink });
+    return true;
+  }
+  function paint(F) {
+    var boxes = [].slice.call(document.querySelectorAll('.onflight')), links = [].slice.call(nav.querySelectorAll('a[data-id]'));
+    if (!F) {
+      codeOut.innerHTML = ''; codeHint.innerHTML = codeIn.value.length === 4 ? '<b>That is not a flight code.</b> Ask the pilot to read it again.' : 'Type the <b>four digits</b> the pilot reads to you. In an online lobby the code arrives by itself.';
+      boxes.forEach(function (b) { b.className = 'onflight off'; b.innerHTML = 'Type the <b>FLIGHT CODE</b> on the START page to see which picture marks this panel.'; });
+      links.forEach(function (a) { a.className = ''; });
+      return;
+    }
+    var on = {}; F.flight.modules.forEach(function (m) { on[m.id] = F.sy.modules[m.id]; });
+    codeHint.innerHTML = '<b>' + KK.MODES[F.mode].name + '</b> · ' + F.flight.modules.length + ' failed systems' + (F.link ? ' · code received from the pilot' : '') + '. Tell the pilot which picture to find, then open that chapter.';
+    var rows = F.flight.modules.map(function (m) { return '<tr><td class="p">' + symHtml(on[m.id]) + '</td><td><a href="#' + m.id + '">' + KK.MODULES[m.id].title + '</a></td></tr>'; }).join('');
+    rows += '<tr class="extra"><td class="p">' + symHtml(F.sy.data) + '</td><td>AIRCRAFT DATA PLACARD (front panel, straight ahead)</td></tr>';
+    rows += '<tr class="extra"><td class="p">' + symHtml(F.sy.pa) + '</td><td><a href="#cabin">PASSENGER ANNOUNCEMENTS</a></td></tr>';
+    codeOut.innerHTML = '<table><tr><th>Picture on the panel</th><th>System</th></tr>' + rows + '</table>';
+    boxes.forEach(function (b) {
+      var id = b.getAttribute('data-id'), sy = id === 'pa' ? F.sy.pa : on[id];
+      if (sy) { b.className = 'onflight'; b.innerHTML = '<span class="sym">' + sy[0] + '</span><span>On flight ' + F.flight.seed + ' this is the <b>' + sy[1] + '</b> panel. Tell the pilot to find that picture.</span>'; }
+      else { b.className = 'onflight off'; b.innerHTML = 'This system is <b>not failing</b> on flight ' + F.flight.seed + '.'; }
+    });
+    links.forEach(function (a) { var id = a.getAttribute('data-id'); a.className = id === 'pa' || on[id] ? 'hot' : 'cold'; });
+  }
+  paint(null);
+  codeIn.addEventListener('input', function () { codeIn.value = codeIn.value.replace(/\D/g, '').slice(0, 4); if (codeIn.value.length === 4) setCode(codeIn.value, false); else if (curCode !== null) { curCode = null; paint(null); } else paint(null); });
+  try { var sc = sessionStorage.getItem('awf_code'); if (sc) setCode(sc, false); } catch (e) {}
+
+  // ---------- the 3D tower room (big screens only; phones keep the plain handbook) ----------
+  var qs = new URLSearchParams(location.search), saved = null;
+  try { saved = localStorage.getItem('awf_t3d'); } catch (e) {}
+  var big = window.innerWidth >= 900 && window.innerHeight >= 500;
+  var want = big && saved !== '0' && !qs.get('plain');
+  var tower = null, pending = null;
+  window.addEventListener('message', function (e) { if (e.data && e.data.awf === 1) { if (e.data.st && e.data.st.f) setCode(e.data.st.f, true); if (tower) tower.setState(e.data.st); else pending = e.data.st; } });
+  function setPref(v) { try { localStorage.setItem('awf_t3d', v); } catch (e) {} location.reload(); }
+  var b3 = document.getElementById('btn3d');
+  if (big && !want) { b3.style.display = 'block'; b3.onclick = function () { setPref('1'); }; }
+  function load(src, cb) { var s = document.createElement('script'); s.src = src; s.onload = cb; s.onerror = function () { if (/gltf|models/.test(src)) cb(); }; document.body.appendChild(s); }
+  if (want) load('js/vendor/three.min.js', function () { load('js/vendor/gltf.min.js', function () { load('js/models.js', function () { load('js/tower3d.js', function () {
+    tower = window.KKTower && window.KKTower.start(document.getElementById('sky3d'));
+    if (!tower) return;
+    window.__tower = tower; if (pending) tower.setState(pending);
+    document.body.classList.add('t3d');
+    var main = document.querySelector('main'), flip = document.getElementById('flipBox');
+    var pages = [document.getElementById('top')].concat([].slice.call(box.children));
+    pages.forEach(function (p) { p.classList.add('page'); });
+    var cur = pages[0]; cur.classList.add('active');
+    var ac = null;
+    function rustle() {
+      try {
+        ac = ac || new (window.AudioContext || window.webkitAudioContext)(); var n = Math.floor(ac.sampleRate * 0.28), buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0);
+        for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 1.6) * (0.5 + 0.5 * Math.sin(i / 90));
+        var src = ac.createBufferSource(); src.buffer = buf; var f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = 0.7; var g = ac.createGain(); g.gain.value = 0.16;
+        src.connect(f); f.connect(g); g.connect(ac.destination); src.start();
+      } catch (e) {}
+    }
+    function mark() { [].forEach.call(nav.querySelectorAll('a'), function (a) { if (a.getAttribute('href') === '#' + cur.id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
+    var folder = document.getElementById('folder');
+    var zoomK = 1;
+    function persp() { folder.style.setProperty('--p', Math.round(window.innerHeight * 0.902) + 'px'); zoomK = Math.max(1, Math.min(1.3, window.innerHeight / 800)); main.style.zoom = zoomK; nav.style.zoom = zoomK; }   // matches the 58 degree camera
+    persp(); window.addEventListener('resize', persp); mark();
+    function setPage(id) {
+      var next = document.getElementById(id); if (!next || next === cur || pages.indexOf(next) < 0) return;
+      // the old page lifts and turns over on its left edge, the new one is already underneath
+      var ghost = document.createElement('div'); ghost.className = 'ghost'; var copy = cur.cloneNode(true); copy.removeAttribute('id'); copy.style.zoom = zoomK; copy.style.marginTop = -main.scrollTop + 'px'; ghost.appendChild(copy);
+      flip.innerHTML = ''; flip.appendChild(ghost); flip.style.top = main.offsetTop + 'px'; flip.style.height = main.clientHeight + 'px'; flip.style.display = 'block';
+      cur.classList.remove('active'); next.classList.add('active'); cur = next; main.scrollTop = 0; rustle(); mark();
+      setTimeout(function () { if (ghost.parentNode) { flip.innerHTML = ''; flip.style.display = 'none'; } }, 640);
+    }
+    document.getElementById('folder').addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a[href^="#"]'); if (!a) return; e.preventDefault(); setPage(a.getAttribute('href').slice(1)); });
+    var peek = false, bp = document.getElementById('btnPeek');
+    bp.onclick = function () { peek = !peek; document.body.classList.toggle('peek', peek); tower.setPeek(peek); bp.textContent = peek ? 'BACK TO THE HANDBOOK' : 'LOOK OUT THE WINDOW'; };
+    window.addEventListener('keydown', function (e) { if (e.code === 'Space' && !(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) { e.preventDefault(); bp.onclick(); } });
+    document.getElementById('btnPlain').onclick = function () { setPref('0'); };
+  }); }); }); });
+})();
+</script>
+</body>
+</html>
