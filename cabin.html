@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Are We Falling? · Cabin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --txt: #d6dde8; --dim: #8491a3; --amber: #ffb000; --green: #3dff8b; --red: #ff3b30; --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; --cond: "Arial Narrow", "Helvetica Neue Condensed", "Roboto Condensed", Arial, sans-serif; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--txt); font-family: var(--cond); user-select: none; -webkit-user-select: none; }
+  #cab { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .hud { position: absolute; background: rgba(8, 11, 16, .78); border: 1px solid #39414e; border-radius: 6px; padding: 10px 14px; }
+  #top { left: 16px; top: 14px; font-family: var(--mono); font-size: 12px; letter-spacing: 2px; color: var(--dim); }
+  #top b { color: var(--amber); }
+  #top a { color: var(--txt); margin-left: 12px; text-decoration: none; border-bottom: 1px solid #39414e; }
+  #top a.on { color: var(--green); border-color: var(--green); }
+  #where { left: 16px; top: 62px; font-size: 22px; letter-spacing: 1px; min-width: 190px; }
+  #where small { display: block; font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--amber); min-height: 14px; margin-top: 3px; }
+  #tasks { right: 16px; top: 14px; width: 310px; }
+  #clock { font-family: var(--mono); font-size: 12px; letter-spacing: 2px; color: var(--dim); display: flex; justify-content: space-between; align-items: baseline; }
+  #clock b { font-size: 30px; color: var(--txt); letter-spacing: 1px; }
+  #clock b.up { color: var(--green); } #clock b.down { color: var(--red); }
+  .task { border-top: 1px solid #2a313c; margin-top: 8px; padding-top: 8px; }
+  .task h4 { margin: 0; font-size: 17px; letter-spacing: 1px; font-weight: 700; display: flex; justify-content: space-between; }
+  .task h4 span { font-family: var(--mono); font-size: 12px; color: var(--amber); }
+  .task p { margin: 3px 0 0; font-size: 14px; color: var(--dim); line-height: 1.25; }
+  .task em { font-style: normal; font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--amber); }
+  .task.done { opacity: .5; } .task.done h4 { text-decoration: line-through; }
+  .task.here { border-top-color: var(--amber); }
+  #hold { left: 50%; bottom: 74px; transform: translateX(-50%); width: 380px; text-align: center; display: none; }
+  #hold.show { display: block; }
+  #holdT { font-size: 18px; letter-spacing: 1px; } #holdT kbd { font-family: var(--mono); background: var(--amber); color: #000; border-radius: 3px; padding: 0 7px; margin-right: 6px; }
+  .bar { height: 8px; background: #1b1f26; border-radius: 4px; margin-top: 8px; overflow: hidden; } .bar i { display: block; height: 100%; width: 0; background: var(--amber); }
+  #toast { left: 50%; top: 22%; transform: translateX(-50%); font-size: 24px; letter-spacing: 1px; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+  #hint { left: 50%; bottom: 14px; transform: translateX(-50%); font-family: var(--mono); font-size: 11.5px; letter-spacing: 1px; color: var(--dim); white-space: nowrap; }
+  #hint b { color: var(--txt); font-weight: 400; }
+  #dbg { left: 16px; bottom: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--dim); }
+  #dbg label { display: flex; align-items: center; gap: 8px; margin-top: 4px; } #dbg input[type=range] { width: 110px; }
+  @media (max-width: 1100px) { #hint { display: none; } }
+</style>
+</head>
+<body>
+<canvas id="cab"></canvas>
+<div id="top" class="hud"><b>ARE WE FALLING?</b> · CABIN · WORK IN PROGRESS <a id="rSab" href="?role=saboteur">SABOTEUR</a><a id="rAtt" href="?role=attendant">FLIGHT ATTENDANT</a></div>
+<div id="where" class="hud"><span id="whereT">…</span><small id="hoverT"></small></div>
+<div id="tasks" class="hud"><div id="clock">TIME TO IMPACT <b id="clockT">7:00</b></div><div id="list"></div></div>
+<div id="hold" class="hud"><div id="holdT"></div><div class="bar"><i id="holdB"></i></div></div>
+<div id="toast" class="hud"></div>
+<div id="hint" class="hud"><b>DRAG</b> look · <b>CLICK</b> a free seat or a door to go there · <b>W S</b> walk the aisle · <b>F</b> stand up, sit down · hold <b>E</b> to work</div>
+<div id="dbg" class="hud">TEST CONTROLS
+  <label><input id="dUnrest" type="range" min="0" max="100" value="0"> PASSENGERS ANGRY</label>
+  <label><input id="dTurb" type="range" min="0" max="100" value="0"> TURBULENCE</label>
+  <label><input id="dDoor" type="checkbox"> COCKPIT DOOR OPEN</label>
+</div>
+
+<script src="js/vendor/three.min.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/roles/saboteur.js" onerror="void 0"></script>
+<script src="js/roles/attendant.js" onerror="void 0"></script>
+<script src="js/cabin3d.js"></script>
+<script>
+/* The cabin test page. It stands in for the game until the cabin seats are wired into the lobby:
+   it deals the tasks of one role from KK.ROLES, runs them and moves a stand-in clock. */
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const q = new URLSearchParams(location.search);
+  const role = q.get('role') === 'attendant' ? 'attendant' : 'saboteur';
+  const seed = +q.get('seed') || 1000 + Math.floor(Math.random() * 9000);
+  $(role === 'attendant' ? 'rAtt' : 'rSab').className = 'on';
+  const cabin = window.KKCabin && KKCabin.start($('cab'), { seed, role, seat: q.get('seat') });
+  if (!cabin) { $('whereT').textContent = 'NO 3D ON THIS DEVICE'; return; }
+
+  // somebody else on board, so both avatars can be looked at
+  if (role === 'saboteur') cabin.setActor('other', { role: 'attendant', at: 'galley' });
+  else { const free = cabin.seats.filter((s) => !s.taken); cabin.setActor('other', { role: 'saboteur', at: free[seed % free.length].id }); }
+
+  // deal the tasks of this role from the flight code, so every screen would get the same ones
+  const pool = (window.KK && KK.ROLES && KK.ROLES[role]) || { perFlight: 0, tasks: [] };
+  const rng = KK.makeRng((seed * 31 + (role === 'attendant' ? 7 : 3)) >>> 0);
+  const deck = pool.tasks.slice();
+  for (let i = deck.length - 1; i > 0; i--) { const j = rng.int(0, i); const t = deck[i]; deck[i] = deck[j]; deck[j] = t; }
+  const tasks = deck.slice(0, pool.perFlight || 3).map((def) => ({ def, done: false, prog: 0 }));
+
+  const NAMES = { seat: 'ANY SEAT', aisle: 'AISLE', lavatory: 'LAVATORY', galley: 'GALLEY', door: 'COCKPIT DOOR' };
+  const fmt = (s) => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  let clock = 420, cur = null, eDown = false, toastT = 0;
+  function paint() {
+    $('list').innerHTML = tasks.length ? tasks.map((t) => '<div class="task' + (t.done ? ' done' : '') + (t === cur ? ' here' : '') + '"><h4>' + t.def.title + '<span>' + (t.def.effect > 0 ? '+' : '') + t.def.effect + ' s</span></h4><p>' + t.def.brief + '</p><em>' + (t.done ? 'DONE' : '▸ ' + (NAMES[t.def.place] || t.def.place)) + '</em></div>').join('')
+      : '<div class="task"><p>No task pool for this seat yet. Add tasks to js/roles/' + role + '.js.</p></div>';
+    cabin.setMarks(tasks.filter((t) => !t.done).map((t) => t.def.place));
+  }
+  function toast(txt) { $('toast').textContent = txt; $('toast').classList.add('show'); toastT = 2.6; }
+  function where() {
+    const a = cabin.at();
+    $('whereT').textContent = a.place === 'seat' ? 'SEAT ' + a.seat : a.place === 'moving' ? 'WALKING…' : (NAMES[a.place] || a.place);
+    const before = cur;
+    cur = tasks.find((t) => !t.done && t.def.place === a.place) || null;
+    if (cur !== before) paint();
+  }
+  cabin.on('arrive', where); cabin.on('leave', where);
+  cabin.on('hover', (h) => { $('hoverT').textContent = !h ? '' : h.seat ? 'CLICK: SIT IN ' + h.seat : 'CLICK: GO TO THE ' + NAMES[h.place]; });
+  window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'e') eDown = true; });
+  window.addEventListener('keyup', (e) => { if (e.key.toLowerCase() === 'e') eDown = false; });
+  $('dUnrest').oninput = (e) => cabin.setState({ unrest: e.target.value / 100 });
+  $('dTurb').oninput = (e) => cabin.setState({ turb: e.target.value / 100 });
+  $('dDoor').onchange = (e) => cabin.setDoor(e.target.checked);
+
+  let last = performance.now();
+  setInterval(() => {
+    const now = performance.now(), dt = Math.min(0.25, (now - last) / 1000); last = now;
+    where();
+    clock = Math.max(0, clock - dt); $('clockT').textContent = fmt(clock);
+    if (toastT > 0) { toastT -= dt; if (toastT <= 0) { $('toast').classList.remove('show'); $('clockT').className = ''; } }
+    $('hold').classList.toggle('show', !!cur);
+    if (!cur) return;
+    if (eDown) cur.prog += dt;
+    $('holdT').innerHTML = '<kbd>E</kbd>HOLD · ' + cur.def.title;
+    $('holdB').style.width = Math.min(100, cur.prog / cur.def.seconds * 100) + '%';
+    if (cur.prog >= cur.def.seconds) {
+      cur.done = true; clock = Math.max(0, clock + cur.def.effect);
+      $('clockT').className = cur.def.effect > 0 ? 'up' : 'down';
+      toast(cur.def.title + ' · ' + (cur.def.effect > 0 ? '+' : '') + cur.def.effect + ' SECONDS');
+      cur = null; paint(); where();
+    }
+  }, 50);
+  paint(); where();
+  window.__cabin = { cabin, tasks, seed, role, get clock() { return clock; } };
+})();
+</script>
+</body>
+</html>
