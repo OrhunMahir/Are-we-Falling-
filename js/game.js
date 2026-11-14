@@ -111,7 +111,7 @@
       stress: 0,
       solved: 0, phase: 'intro', log: [], called: {}, t: 0, nextThunder: 6 + Math.random() * 8, endT: 0,
       players: settings.players,
-      drunk: 0, sips: 0,
+      drunk: 0, sips: 0, smoke: 0, cigs: 0, coughT: 0,
       cabin: { unrest: 0.12, complaint: null, lastPA: null, cool: 0, calmed: 0, panics: 0, lastKey: null },
     };
     buildCockpit(); blink(0);
@@ -231,10 +231,48 @@
     log('The captain took a sip of whiskey (' + G.sips + ' of ' + MAX_SIPS + ').');
     return true;
   };
-  let blurNow = -1;
+  // ---------- the cabin seats: what the saboteur and the flight attendant do in the cabin lands here ----------
+  function cabinTask(d) {
+    if (!G || G.phase !== 'flight' || !d) return;
+    const sab = d.role === 'saboteur', eff = Math.max(-30, Math.min(30, +d.effect || 0)), sign = (eff > 0 ? '+' : '') + eff;
+    G.timeLeft = Math.max(5, Math.min(G.total, G.timeLeft + eff));
+    const g = G;
+    setTimeout(() => {   // a moment later, so the pilot reads the message before the cabin reacts
+      if (G !== g || G.phase !== 'flight') return;
+      (d.fx || []).forEach((f) => {
+        if (!f) return;
+        if (f.type === 'turbulence') turbulence(0.7);
+        else if (f.type === 'panic') G.cabin.unrest = Math.min(1, G.cabin.unrest + (+f.amount || 0.25) * 0.6);
+        else if (f.type === 'masks' || f.type === 'smoke') { G.cabin.unrest = Math.min(1, G.cabin.unrest + 0.12); if (!G.cabin.complaint) cabinComplain(); }
+        else if (f.type === 'blackout') { K3.lightning(); turbulence(0.3); }
+      });
+    }, 3000);
+    if (!sab) G.cabin.unrest = Math.max(0, G.cabin.unrest - 0.2);   // the flight attendant calms the cabin with every job done
+    if (sab) A.sfx.warn(); else A.sfx.chime();
+    subtitle((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + d.title + ' · ' + sign + ' SECONDS', 4200);
+    log((sab ? 'Sabotage in the cabin: ' : 'The flight attendant: ') + String(d.title).toLowerCase() + ' (' + sign + ' s).');
+  }
+  // ---------- the ashtray: a drag clears the head, but the smoke stays in the cockpit for a while ----------
+  const DRAG_SMOKE = 0.3, SMOKE_MAX = 1.6, SMOKE_CLEAR = 40;   // SMOKE_CLEAR: seconds for one full unit of smoke to drift away
+  K3.hooks.onSmoke = () => {
+    if (!G || G.phase !== 'flight') return false;
+    G.cigs++; G.smoke = Math.min(SMOKE_MAX, G.smoke + DRAG_SMOKE); G.drunk = Math.max(0, G.drunk - 0.8);
+    A.sfx.lighter(); setTimeout(() => A.sfx.exhale(), 1500);
+    subtitle(G.smoke > 1.05 ? 'YOU CAN BARELY SEE THE PANELS · let it clear' : G.smoke > 0.6 ? 'A DRAG · the cockpit is getting hazy' : 'A DRAG · steadier head, thicker air', 2800);
+    log('The captain had a smoke (' + G.cigs + ').');
+    return true;
+  };
+  let blurNow = -1, hazeNow = -1;
   function renderDrunk() {
-    const d = G ? G.drunk : 0, px = Math.max(0, d - 0.7) * 1.35;
-    if (Math.abs(px - blurNow) > 0.08) { blurNow = px; $('view3d').style.filter = px > 0.05 ? 'blur(' + px.toFixed(2) + 'px) saturate(' + (1 + d * 0.12).toFixed(2) + ')' : ''; }
+    const d = G ? G.drunk : 0, s = G ? G.smoke || 0 : 0, px = Math.max(0, d - 0.7) * 1.35 + Math.max(0, s - 0.7) * 1.2, key = px + s * 4;
+    if (Math.abs(key - blurNow) > 0.06) {
+      blurNow = key; const f = [];
+      if (px > 0.05) f.push('blur(' + px.toFixed(2) + 'px)');
+      if (d > 0.74) f.push('saturate(' + (1 + d * 0.12).toFixed(2) + ')');
+      if (s > 0.03) f.push('contrast(' + (1 - Math.min(0.45, s * 0.3)).toFixed(2) + ')', 'brightness(' + (1 + Math.min(0.12, s * 0.07)).toFixed(2) + ')');
+      $('view3d').style.filter = f.join(' ');
+    }
+    if (Math.abs(s - hazeNow) > 0.008 || (s === 0 && hazeNow !== 0)) { hazeNow = s; $('haze').style.opacity = Math.min(0.6, s * 0.4).toFixed(3); }
   }
   // heavy eyelids: the more whiskey, the slower and longer the blinks
   const lid = { t: 0, dur: 0, next: 4, k: 0 };
@@ -353,7 +391,7 @@
     G.phase = 'landing'; G.endT = 0; G.landAltStart = altitude();
     log('All systems stable. Cleared to land runway 26L.', 'good');
     controllers.forEach((c) => c && c.destroy && c.destroy());
-    K3.stand(false, true); K3.resetView(); K3.view.pitch = 0.03; G.drunk = 0; renderDrunk(); blink(0);
+    K3.stand(false, true); K3.resetView(); K3.view.pitch = 0.03; G.drunk = 0; G.smoke = 0; renderDrunk(); blink(0);
     sky.state.mode = 'landing'; sky.state.landT = 0; sky.state.rollTarget = 0; sky.state.damage = 0;
     const ov = $('overlay'); ov.className = 'overlay show landing';
     ov.innerHTML = '<div class="ov-big ok">CLEARED TO LAND</div><div class="ov-sub">Runway 26 Left</div>';
@@ -390,7 +428,7 @@
   }
   function crash(why) {
     if (!G || G.phase === 'crashed') return;
-    G.phase = 'crashed'; G.drunk = 0; renderDrunk(); blink(0);
+    G.phase = 'crashed'; G.drunk = 0; G.smoke = 0; renderDrunk(); blink(0);
     log(why, 'bad'); log('END OF RECORDING.', 'bad');
     controllers.forEach((c) => c && c.destroy && c.destroy());
     A.stopAllLoops(0.05);
@@ -425,6 +463,7 @@
       stat(won ? 'TIME TO SPARE' : 'FLIGHT TIME', won ? fmtTime(G.timeLeft) : fmtTime(used)) +
       stat('CABIN', G.cabin.calmed + ' calmed · ' + G.cabin.panics + ' panic' + (G.cabin.panics === 1 ? '' : 's')) +
       stat('WHISKEY', G.sips + (G.sips === 1 ? ' sip' : ' sips')) +
+      stat('CIGARETTES', G.cigs + (G.cigs === 1 ? ' drag' : ' drags')) +
       stat('MODE', KK.MODES[G.flight.mode].name) +
       stat('FLIGHT CODE', String(G.flight.seed));
     const lg = $('endLog'); lg.innerHTML = '';
@@ -455,7 +494,7 @@
       const covered = landCam && G.phase !== 'flight' && G.endT > 4.6;   // the tower shot hides the cockpit: no need to draw both
       if (!covered) sky.draw(dt);
       K3.setEnabled(G.phase === 'flight');
-      if (!covered) K3.frame(dt, { drunk: G.phase === 'flight' ? G.drunk : 0, roll: sky.state.roll, shake: sky.state.shake, altFt: G.phase === 'landing' ? parseInt($('hudAlt').textContent, 10) || 0 : altitude(), danger: G.phase === 'flight' && G.timeLeft < 30 ? 1 : 0, t: G.t, bottle: 1 - G.sips / MAX_SIPS, turb: tb });
+      if (!covered) K3.frame(dt, { drunk: G.phase === 'flight' ? G.drunk : 0, roll: sky.state.roll, shake: sky.state.shake, altFt: G.phase === 'landing' ? parseInt($('hudAlt').textContent, 10) || 0 : altitude(), danger: G.phase === 'flight' && G.timeLeft < 30 ? 1 : 0, t: G.t, bottle: 1 - G.sips / MAX_SIPS, turb: tb, smoke: G.phase === 'flight' ? G.smoke : 0 });
     }
     requestAnimationFrame(frame);
   }
@@ -494,7 +533,9 @@
         $('flash').classList.add('on'); setTimeout(() => $('flash').classList.remove('on'), 120);
         A.play('sfx_thunder', { bus: 'sfx', gain: 0.5 });
       }
-      G.drunk = Math.max(0, G.drunk - dt / 9); renderDrunk(); blink(dt);
+      G.drunk = Math.max(0, G.drunk - dt / 9); G.smoke = Math.max(0, G.smoke - dt / SMOKE_CLEAR);
+      if (G.smoke > 1.05 && G.t > G.coughT) { G.coughT = G.t + 4.5 + Math.random() * 3; A.sfx.cough(); sky.jolt(0.14); }
+      renderDrunk(); blink(dt);
       cabinTick(dt);
       A.setLoopGain('sfx_panic', 0.05 + Math.max(G.stress, G.cabin.unrest * 0.85) * 0.4);
       renderHud();
@@ -506,12 +547,12 @@
       $('hudAlt').textContent = String(alt).padStart(5, '0');
       sky.state.alt = 0.1 * (1 - k);
       if (G.endT > 3.4 && !G.called.land) { G.called.land = true; A.play('gpws_landing', { gain: 0.8 }); $('overlay').className = 'overlay'; if (landCam) $('cockpit').classList.add('landcam'); }
-      const late = landCam ? 2.4 : 0;   // the tower shot needs a little longer to reach the runway
-      if (G.endT > 7 + late && !G.called.td) { G.called.td = true; sky.jolt(0.8); if (!A.play('sfx_touchdown', { bus: 'sfx', gain: 0.9 })) A.sfx.clunk(); }
+      const late = landCam ? 2.4 : 0;   // the tower shot stays on the roll-out a little longer; touchdown is at 7 s on every screen (tower3d.js)
+      if (G.endT > 7 && !G.called.td) { G.called.td = true; sky.jolt(0.8); if (!A.play('sfx_touchdown', { bus: 'sfx', gain: 0.9 })) A.sfx.clunk(); }
       if (G.endT > 8.2 + late) finishLanding();
     }
   }
 
   // test hook
-  window.__kk = { get G() { return G; }, land, startFlight, settings, crash, K3, toTitle, music: titleMusic };
+  window.__kk = { get G() { return G; }, land, startFlight, settings, crash, K3, toTitle, music: titleMusic, cabinTask };
 })();

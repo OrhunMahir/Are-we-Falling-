@@ -33,10 +33,11 @@
   let slots = [], panels = [], pickMeshes = [], blinkers = [], tickers = [];
   const propMeshes = [];
   let bottle = null, drinkT = 0;
+  let ashtray = null, smokeT = 0, smokeNow = 0;
   let gen = 0, clock = 0, enabled = false, hover = null, maxAniso = 4;
   const view = { yaw: 0, pitch: -0.2, fov: 62, tilt: 0 };
   const keys = {};
-  const hooks = { onHover: null, onDrink: null };
+  const hooks = { onHover: null, onDrink: null, onSmoke: null };
 
   const _m = new T.Matrix4(), _q = new T.Quaternion(), _p = new T.Vector3(), _s = new T.Vector3(),
     _e = new T.Euler(), _c = new T.Color(), _v = new T.Vector3(), _v2 = new T.Vector3();
@@ -346,7 +347,7 @@
     B(0.46, 0.1, 0.46, 0.5, 0.45, 2.0, seat); B(0.12, 0.45, 0.12, 0.5, 0.2, 2.0, dark);
     // thrust levers on the pedestal's front edge (decor)
     [-0.05, 0.05].forEach((x) => { B(0.03, 0.2, 0.03, x, 0.6, -0.9, lam('#9aa1a9')).rotation.x = 0.35; B(0.06, 0.045, 0.05, x, 0.7, -0.865, lam('#e9ebee')); });
-    makeBottle(); makeBobble();
+    makeBottle(); makeBobble(); makeAshtray();
     // yokes
     yoke = makeYoke(-0.72); makeYoke(0.72);
     // lights
@@ -389,6 +390,71 @@
       _v.set(0, 0, -1).applyQuaternion(camera.quaternion); _p.copy(camera.position).addScaledVector(_v, 0.3); _p.y -= 0.2;
       bottle.g.position.lerpVectors(bottle.home, _p, k); bottle.g.rotation.x = k * 1.9; bottle.g.rotation.y = view.yaw;
     } else { bottle.g.position.copy(bottle.home); bottle.g.rotation.set(0, 0, 0); }
+  }
+
+  // the captain's ashtray: one drag clears the head, too many fill the cockpit with smoke
+  function makeAshtray() {
+    const home = new T.Vector3(-0.62, 1.146, -0.88), g = new T.Group(); g.position.copy(home);
+    const chrome = new T.MeshPhongMaterial({ color: '#8d949c', specular: '#ffffff', shininess: 110 });
+    const dish = new T.Mesh(new T.CylinderGeometry(0.052, 0.043, 0.02, 24), chrome); dish.position.y = 0.01; g.add(dish);
+    const ash = new T.Mesh(new T.CylinderGeometry(0.043, 0.043, 0.004, 24), lam('#34322f')); ash.position.y = 0.0205; g.add(ash);
+    [[0.014, 0.6], [-0.016, -1.1], [0.002, 2.2]].forEach((b) => { const st = new T.Mesh(new T.CylinderGeometry(0.004, 0.004, 0.024, 8).rotateX(Math.PI / 2), lam('#d9cdb8')); st.rotation.y = b[1]; st.position.set(b[0], 0.027, b[0] * 0.9 - 0.006); g.add(st); });
+    scene.add(g);
+    // the lit one rests on the rim: ember at -z, filter at +z
+    const cig = new T.Group();
+    cig.add(new T.Mesh(new T.CylinderGeometry(0.0042, 0.0042, 0.062, 10).rotateX(Math.PI / 2).translate(0, 0, -0.013), lam('#f3f0e8')));
+    cig.add(new T.Mesh(new T.CylinderGeometry(0.0044, 0.0044, 0.024, 10).rotateX(Math.PI / 2).translate(0, 0, 0.03), lam('#c9853a')));
+    const ember = new T.Mesh(new T.SphereGeometry(0.0048, 8, 6), new T.MeshBasicMaterial({ color: '#ff6a1a', fog: false })); ember.position.z = -0.045; cig.add(ember);
+    const rest = new T.Vector3(home.x + 0.034, home.y + 0.031, home.z + 0.022); cig.position.copy(rest); cig.rotation.set(0.28, 0.75, 0); scene.add(cig);
+    const restQ = cig.quaternion.clone();
+    const pc = document.createElement('canvas'); pc.width = pc.height = 64; const x = pc.getContext('2d');
+    const gr = x.createRadialGradient(32, 32, 2, 32, 32, 31); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+    const ptex = new T.CanvasTexture(pc);
+    const mk = () => { const sp = new T.Sprite(new T.SpriteMaterial({ map: ptex, transparent: true, depthWrite: false, fog: false, opacity: 0, color: 0xd2d3cf })); sp.visible = false; sp.material.rotation = Math.random() * 6.28; scene.add(sp); return sp; };
+    const puffs = []; for (let i = 0; i < 40; i++) { const sp = mk(); sp.userData = { life: 1, max: 1, v: new T.Vector3(), s0: 0, s1: 0, a: 0 }; puffs.push(sp); }
+    const haze = []; for (let i = 0; i < 16; i++) { const sp = mk(); const sc = 0.9 + Math.random() * 1.1; sp.scale.set(sc * 1.4, sc, 1); sp.userData = { x: -1.3 + Math.random() * 2.6, y: 0.85 + Math.random() * 1.1, z: -1.0 + Math.random() * 1.2, a: 0.09 + Math.random() * 0.1 }; sp.position.set(sp.userData.x, sp.userData.y, sp.userData.z); haze.push(sp); }
+    const proxy = new T.Mesh(new T.CylinderGeometry(0.075, 0.075, 0.13, 8), new T.MeshBasicMaterial()); proxy.position.set(home.x, home.y + 0.05, home.z); proxy.visible = false; scene.add(proxy);
+    const ctrl = { name: 'ASHTRAY · HAVE A SMOKE', x: 0, y: 0, w: 0, h: 0, panel: null, world(out) { return (out || new T.Vector3()).copy(home).setY(home.y + 0.05); }, press() { if (smokeT <= 0 && (!hooks.onSmoke || hooks.onSmoke() !== false)) smokeT = 2.6; } };
+    api.ashtray = ctrl; proxy.userData.ctrl = ctrl; propMeshes.push(proxy); pickMeshes.push(proxy);
+    ashtray = { cig, ember, rest, restQ, puffs, haze, wt: 0, blown: false, tip: new T.Vector3() };
+  }
+  function puff(pos, vx, vy, vz, s0, s1, a, max) {
+    const sp = ashtray.puffs.find((q) => q.userData.life >= q.userData.max); if (!sp) return;
+    const u = sp.userData; u.life = 0; u.max = max; u.v.set(vx, vy, vz); u.s0 = s0; u.s1 = s1; u.a = a; sp.position.copy(pos); sp.visible = true;
+  }
+  function updateAshtray(dt) {
+    if (!ashtray) return;
+    const a = ashtray, target = Math.max(0, env.smoke || 0);
+    smokeNow += (target - smokeNow) * Math.min(1, dt * 1.5); if (smokeNow < 0.004 && !target) smokeNow = 0;
+    scene.fog.density = smokeNow * 0.6;
+    if (smokeT > 0) {
+      const u = 1 - smokeT / 2.6; smokeT -= dt;
+      let k = u < 0.22 ? u / 0.22 : u < 0.62 ? 1 : Math.max(0, 1 - (u - 0.62) / 0.38); k = k * k * (3 - 2 * k);
+      _v.set(0, 0, -1).applyQuaternion(camera.quaternion); _p.copy(camera.position).addScaledVector(_v, 0.2); _p.y -= 0.045;
+      a.cig.position.lerpVectors(a.rest, _p, k); a.cig.quaternion.slerpQuaternions(a.restQ, camera.quaternion, k);
+      a.ember.scale.setScalar(u > 0.24 && u < 0.5 ? 1.9 : 1);
+      if (!a.blown && u > 0.64) {   // breathe out
+        a.blown = true; _p.copy(camera.position).addScaledVector(_v, 0.24); _p.y -= 0.07;
+        for (let i = 0; i < 9; i++) puff(_p, _v.x * (0.3 + Math.random() * 0.4) + (Math.random() - 0.5) * 0.12, _v.y * 0.3 + 0.03 + Math.random() * 0.06, _v.z * (0.3 + Math.random() * 0.4) + (Math.random() - 0.5) * 0.12, 0.05, 0.45 + Math.random() * 0.35, 0.4, 2.4 + Math.random() * 1.2);
+      }
+    } else { a.cig.position.copy(a.rest); a.cig.quaternion.copy(a.restQ); a.ember.scale.setScalar(1); a.blown = false; }
+    a.wt -= dt;
+    if (a.wt <= 0 && smokeT <= 0 && enabled) {   // the thin thread that rises from the ashtray
+      a.wt = 0.2; a.tip.set(0, 0, -0.047).applyQuaternion(a.cig.quaternion).add(a.cig.position);
+      puff(a.tip, (Math.random() - 0.5) * 0.02, 0.06 + Math.random() * 0.03, (Math.random() - 0.5) * 0.02, 0.012, 0.075, 0.26, 2.4);
+    }
+    for (let i = 0; i < a.puffs.length; i++) {
+      const sp = a.puffs[i], u = sp.userData; if (u.life >= u.max) continue;
+      u.life += dt; const t = u.life / u.max;
+      if (t >= 1) { sp.visible = false; continue; }
+      sp.position.addScaledVector(u.v, dt); u.v.multiplyScalar(1 - Math.min(1, dt * 0.9)); u.v.x += Math.sin(clock * 3 + i) * dt * 0.01;
+      const sc = u.s0 + (u.s1 - u.s0) * t; sp.scale.set(sc, sc, 1); sp.material.opacity = u.a * (1 - t) * Math.min(1, t * 8);
+    }
+    for (let i = 0; i < a.haze.length; i++) {
+      const sp = a.haze[i], u = sp.userData; sp.visible = smokeNow > 0.03; if (!sp.visible) continue;
+      sp.material.opacity = Math.min(0.42, smokeNow * u.a);
+      sp.position.set(u.x + Math.sin(clock * 0.13 + i) * 0.18, u.y + Math.sin(clock * 0.09 + i * 2.1) * 0.07, u.z);
+    }
   }
 
   // a little aircraft on a spring, nodding on the glareshield
@@ -455,12 +521,12 @@
     }
     const ctex = new T.CanvasTexture(cv);
     for (let i = 0; i < 34; i++) {
-      const mat = new T.SpriteMaterial({ map: ctex, transparent: true, depthWrite: false, opacity: 0.25 + Math.random() * 0.4, color: new T.Color().setHSL(0.6, 0.12, 0.2 + Math.random() * 0.22) });
+      const mat = new T.SpriteMaterial({ map: ctex, transparent: true, depthWrite: false, fog: false, opacity: 0.25 + Math.random() * 0.4, color: new T.Color().setHSL(0.6, 0.12, 0.2 + Math.random() * 0.22) });
       const sp = new T.Sprite(mat); sp.userData.o = mat.opacity; respawn(sp, true); scene.add(sp); clouds.push(sp);
     }
     // lightning bolt
     const bg = new T.BufferGeometry(); bg.setAttribute('position', new T.BufferAttribute(new Float32Array(16 * 3), 3));
-    bolt = new T.Line(bg, new T.LineBasicMaterial({ color: 0xe8f0ff })); bolt.visible = false; bolt.frustumCulled = false; scene.add(bolt);
+    bolt = new T.Line(bg, new T.LineBasicMaterial({ color: 0xe8f0ff, fog: false })); bolt.visible = false; bolt.frustumCulled = false; scene.add(bolt);
   }
   function respawn(sp, anywhere) {
     const side = Math.random() < 0.3;
@@ -727,7 +793,7 @@
     canvas = cv; skyCanvas = skyCv;
     renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-    scene = new T.Scene(); scene.background = new T.Color('#05070b');
+    scene = new T.Scene(); scene.background = new T.Color('#05070b'); scene.fog = new T.FogExp2(0x8c8d89, 0);   // cigarette smoke, see updateAshtray
     camera = new T.PerspectiveCamera(view.fov, 1280 / 720, 0.03, 400);
     camera.rotation.order = 'YXZ'; camera.position.copy(EYE);
     panelGeom = new T.PlaneGeometry(PW * MM, PH * MM);
@@ -834,7 +900,7 @@
       camera.rotation.y += (Math.sin(clock * 0.9) * 0.022 + Math.sin(clock * 2.3) * 0.006) * dk;
       camera.rotation.x += Math.cos(clock * 0.7) * 0.015 * dk; camera.updateMatrixWorld(true);
     }
-    updateBottle(dt); updateBobble(dt);
+    updateBottle(dt); updateBobble(dt); updateAshtray(dt);
     yoke.rotation.z = Math.max(-0.7, Math.min(0.7, -(env.roll || 0) * 3.2 + Math.sin(clock * 2.3) * 0.02));
     skyTex.needsUpdate = true;
     // a puff is a flat picture that turns with the head, so it has to be gone before it could reach into the cockpit

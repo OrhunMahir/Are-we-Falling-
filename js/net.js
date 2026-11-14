@@ -4,6 +4,8 @@
   'use strict';
   const KK = window.KK;
   const PREFIX = 'awf1-', MAX = 4;
+  // two seats are needed (pilot, tower); the two cabin seats are optional and play in cabin.html
+  const SEATS = ['pilot', 'tower', 'saboteur', 'attendant'], CAB_SEAT = { saboteur: 1, attendant: 1 }, SEAT_NAME = { pilot: 'PILOT', tower: 'TOWER', saboteur: 'SABOTEUR', attendant: 'ATTENDANT' };
   const ROOMS = ['ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT', 'GOLF', 'HOTEL'];
   const params = new URLSearchParams(location.search);
   const $ = (id) => document.getElementById(id);
@@ -41,6 +43,7 @@
       '<div class="net-cols"><div>' +
         '<label class="net-l">CREW</label><div id="netMembers" class="net-members"></div>' +
         '<label class="net-l">YOUR SEAT</label><div class="net-row"><button id="netPilot" class="net-btn seat">PILOT<small>flies the cockpit</small></button><button id="netTower" class="net-btn seat">TOWER<small>reads the handbook</small></button></div>' +
+        '<div class="net-row"><button id="netSab" class="net-btn seat opt">SABOTEUR<small>optional · in the cabin, against the crew</small></button><button id="netAtt" class="net-btn seat opt">ATTENDANT<small>optional · in the cabin, with the crew</small></button></div>' +
       '</div><div>' +
         '<label class="net-l">FLIGHT</label><div id="netModes" class="net-modes"></div>' +
         '<label class="net-l">VOICE</label><div class="net-row"><button id="netMic" class="net-btn"></button><button id="netFx" class="net-btn"></button></div>' +
@@ -63,10 +66,15 @@
 
   function showView(v) {
     N.view = v;
-    root.className = v === 'off' || v === 'fly' ? '' : 'show v-' + v;
+    const cab = v === 'tower' && CAB_SEAT[myRole()];
+    root.className = v === 'off' || v === 'fly' ? '' : 'show v-' + v + (cab ? ' cab' : '');
     document.body.classList.toggle('net-online', !!N.code);
     document.body.classList.toggle('net-cover', v !== 'off' && v !== 'fly');
-    if (v === 'tower') { const f = $('twBook'); if (!f.getAttribute('src')) f.setAttribute('src', 'manual.html'); if (kk().music) kk().music(false); }
+    if (v === 'tower') {   // the tower reads the handbook, the cabin seats get the cabin
+      const f = $('twBook'), want = cab ? 'cabin.html?embed=1&role=' + myRole() : 'manual.html';
+      if (f.getAttribute('src') !== want) f.setAttribute('src', want);
+      if (kk().music) kk().music(false);
+    }
     syncEnd(); render();
   }
   let toastT = null;
@@ -233,9 +241,12 @@
     if (d.t === 'hello') { m.name = clean(d.name) || m.name; m.mic = !!d.mic; roster(); }
     else if (d.t === 'mic') { m.mic = !!d.on; roster(); }
     else if (d.t === 'role') {
-      if (N.inGame || (d.role !== 'pilot' && d.role !== 'tower')) return;
-      if (d.role === 'pilot') N.members.forEach((x) => { if (x.role === 'pilot') x.role = 'tower'; });
+      if (N.inGame || SEATS.indexOf(d.role) < 0) return;
+      if (d.role !== 'tower') N.members.forEach((x) => { if (x.role === d.role) x.role = 'tower'; });   // one pilot, one saboteur, one attendant
       m.role = d.role; roster();
+    } else if (d.t === 'cab') {   // something a cabin seat did: everybody else hears about it
+      if (!CAB_SEAT[m.role] || !N.inGame) return;
+      d.role = m.role; cast(d, from); if (from !== myId()) onCab(d);
     } else if (d.t === 'st') { if (m.role === 'pilot') { cast(d, from); onState(d); if (d.ph === 'lobby') roster(); } }
   }
   /* send an action to the lobby: the host applies it, everybody else asks the host */
@@ -258,14 +269,15 @@
     if (N.isHost) { hostHandle(d, from); return; }
     N.hostSeen = Date.now();
     if (d.t === 'roster') {
-      N.members = Array.isArray(d.members) ? d.members.slice(0, MAX).map((m) => ({ id: String(m.id), name: clean(m.name) || 'CREW', role: m.role === 'pilot' ? 'pilot' : 'tower', mic: !!m.mic, host: !!m.host })) : [];
+      N.members = Array.isArray(d.members) ? d.members.slice(0, MAX).map((m) => ({ id: String(m.id), name: clean(m.name) || 'CREW', role: SEATS.indexOf(m.role) >= 0 ? m.role : 'tower', mic: !!m.mic, host: !!m.host })) : [];
       if (KK.MODES[d.mode]) N.mode = d.mode;
       N.inGame = !!d.inGame; N.status = '';
       if (N.view === 'browse') { showView('room'); enableMic(); }
-      if (N.inGame && myRole() === 'tower' && N.view === 'room') showView('tower');
+      if (N.inGame && myRole() !== 'pilot' && N.view === 'room') showView('tower');
       syncCalls(); render();
     } else if (d.t === 'start') onStart(d.mode);
     else if (d.t === 'st') onState(d);
+    else if (d.t === 'cab') onCab(d);
     else if (d.t === 'full') { N.hostConn = null; dropPeer(); N.status = ''; N.error = 'That lobby is full.'; showView('browse'); }
   }
   function onStart(mode) { N.grace = Date.now() + 60000;
@@ -274,6 +286,25 @@
     if (myRole() === 'pilot') { showView('fly'); kk().settings.mode = N.mode; kk().startFlight(); N.flying = true; }
     else showView('tower');
   }
+  const tidy = (t, n) => String(t || '').replace(/[^\w \-.']/g, '').trim().slice(0, n || 40).toUpperCase();
+  /* a cabin seat finished a task or moved: the pilot's game takes the effect, the cabin views show each other */
+  function onCab(d) {
+    if (!d || !CAB_SEAT[d.role]) return;
+    if (d.k === 'task') {
+      const eff = Math.max(-30, Math.min(30, Math.round(+d.effect || 0))), title = tidy(d.title), sab = d.role === 'saboteur';
+      if (myRole() === 'pilot') { if (kk() && kk().cabinTask) kk().cabinTask({ role: d.role, id: tidy(d.id, 16), title, effect: eff, fx: Array.isArray(d.fx) ? d.fx.slice(0, 4) : [] }); }
+      else if (myRole() === 'tower') toast((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + title + ' · ' + (eff > 0 ? '+' : '') + eff + ' SECONDS', 5000);
+    }
+    try { const f = $('twBook'); if (f && f.contentWindow && CAB_SEAT[myRole()]) f.contentWindow.postMessage({ awf: 1, cab: { k: d.k, role: d.role, at: tidy(d.at, 12).toLowerCase(), id: tidy(d.id, 16) } }, '*'); } catch (e) {}
+  }
+  // the cabin page (in the frame) reports what its player does
+  window.addEventListener('message', (e) => {
+    const f = $('twBook'), d = e.data;
+    if (!f || e.source !== f.contentWindow || !d || d.awf !== 1 || !d.cab || !CAB_SEAT[myRole()] || !N.inGame) return;
+    const c = d.cab;
+    if (c.k === 'task') act({ t: 'cab', k: 'task', id: tidy(c.id, 16), title: tidy(c.title), effect: Math.max(-30, Math.min(30, Math.round(+c.effect || 0))), fx: Array.isArray(c.fx) ? c.fx.slice(0, 4).map((x) => ({ type: tidy(x && x.type, 12).toLowerCase(), amount: Math.max(0, Math.min(1, +(x && x.amount) || 0)) })) : [] });
+    else if (c.k === 'pos') act({ t: 'cab', k: 'pos', at: tidy(c.at, 12) });
+  });
   function toBook(d) { try { const f = $('twBook'); if (f && f.contentWindow) f.contentWindow.postMessage({ awf: 1, st: d }, '*'); } catch (e) {} }
   function onState(d) {
     toBook(d);
@@ -286,7 +317,7 @@
     if (!N.code || !N.inGame || myRole() !== 'pilot' || !kk()) return;
     const G = kk().G;
     if (!G) { N.flying = false; N.inGame = false; act({ t: 'st', ph: 'lobby' }); showView('room'); return; }
-    act({ t: 'st', f: G.flight.seed, ph: G.phase, tl: Math.max(0, Math.round(G.timeLeft)), tot: G.total, k: G.strikes, s: G.solved, n: G.flight.modules.length, o: G.flight.modules.filter((m) => !m.solved).map((m) => m.id) });
+    act({ t: 'st', f: G.flight.seed, ph: G.phase, tl: Math.max(0, Math.round(G.timeLeft)), tot: G.total, k: G.strikes, s: G.solved, n: G.flight.modules.length, o: G.flight.modules.filter((m) => !m.solved).map((m) => m.id), u: +G.cabin.unrest.toFixed(2), tb: G.turb > 0 ? +(G.turbP || 0).toFixed(2) : 0 });
   }, 500);
   // heartbeat: a closed tab or a dead connection is noticed within about ten seconds
   let lastTick = Date.now();
@@ -435,7 +466,7 @@
     N.members.forEach((m) => {
       const row = document.createElement('div'); row.className = 'net-m' + (m.id === myId() ? ' me' : '') + (N.talk[m.id] && now - N.talk[m.id] < 700 ? ' talk' : '');
       const n = document.createElement('b'); n.textContent = m.name + (m.id === myId() ? ' (you)' : '');
-      const r = document.createElement('span'); r.className = 'role ' + m.role; r.textContent = m.role === 'pilot' ? 'PILOT' : 'TOWER';
+      const r = document.createElement('span'); r.className = 'role ' + m.role; r.textContent = SEAT_NAME[m.role] || 'TOWER';
       const mic = document.createElement('span'); mic.className = 'mic'; mic.textContent = (m.mic ? 'MIC ON' : 'NO MIC') + (m.host ? ' · HOST' : '');
       row.appendChild(n); row.appendChild(r); row.appendChild(mic); box.appendChild(row);
     });
@@ -449,7 +480,15 @@
     let dots = ''; for (let i = 0; i < KK.MAX_STRIKES; i++) dots += '<i class="' + (d && i < d.k ? 'hit' : '') + '"></i>';
     $('twDmg').innerHTML = dots;
     $('twFix').textContent = d ? d.s + ' / ' + d.n : '0 / 0';
-    const ph = d ? d.ph : 'wait';
+    const ph = d ? d.ph : 'wait', role = myRole();
+    if (CAB_SEAT[role]) {   // the cabin seats: the saboteur is glad about a crash
+      const sab = role === 'saboteur', down = ph === 'crashed', up = ph === 'won' || ph === 'landing';
+      b.className = 'net-banner ' + (up || down ? (up !== sab ? 'ok show' : 'bad show') : ph === 'wait' || ph === 'intro' ? 'show' : '');
+      b.textContent = up ? (sab ? 'THE AIRCRAFT IS ON THE GROUND. The crew beat you. Waiting for the pilot to come back to the lobby.' : 'ON THE GROUND. You kept the cabin together. Waiting for the pilot to come back to the lobby.')
+        : down ? (sab ? 'AIRCRAFT LOST. That was your doing. Waiting for the pilot to come back to the lobby.' : 'AIRCRAFT LOST. Waiting for the pilot to come back to the lobby.')
+        : ph === 'wait' || ph === 'intro' ? (sab ? 'You are a passenger like everybody else. Nobody knows what you are up to.' : 'Cabin crew, take your position. The flight is about to get rough.') : '';
+      return;
+    }
     b.className = 'net-banner ' + (ph === 'won' || ph === 'landing' ? 'ok show' : ph === 'crashed' ? 'bad show' : ph === 'wait' || ph === 'intro' ? 'show' : '');
     b.textContent = ph === 'won' ? 'ON THE GROUND. Everybody walked away. Waiting for the pilot to come back to the lobby.'
       : ph === 'landing' ? 'ALL SYSTEMS STABLE. The aircraft is cleared to land.'
@@ -478,7 +517,8 @@
       renderMembers();
       const role = myRole();
       $('netPilot').classList.toggle('sel', role === 'pilot'); $('netTower').classList.toggle('sel', role === 'tower');
-      $('netPilot').disabled = $('netTower').disabled = N.inGame;
+      $('netSab').classList.toggle('sel', role === 'saboteur'); $('netAtt').classList.toggle('sel', role === 'attendant');
+      $('netPilot').disabled = $('netTower').disabled = $('netSab').disabled = $('netAtt').disabled = N.inGame;
       const mb = $('netModes'); mb.innerHTML = '';
       Object.keys(KK.MODES).forEach((k) => {
         const m = KK.MODES[k], b = document.createElement('button');
@@ -514,6 +554,8 @@
   $('twLeave').onclick = () => { dropPeer(); showView('browse'); refresh(); };
   $('netPilot').onclick = () => act({ t: 'role', role: 'pilot' });
   $('netTower').onclick = () => act({ t: 'role', role: 'tower' });
+  $('netSab').onclick = () => act({ t: 'role', role: 'saboteur' });
+  $('netAtt').onclick = () => act({ t: 'role', role: 'attendant' });
   $('netMic').onclick = cycleMic; $('twMic').onclick = cycleMic; chip.onclick = (e) => { e.stopPropagation(); cycleMic(); };
   $('netFx').onclick = () => { N.fx = !N.fx; store.set('awf_fx', N.fx ? '1' : '0'); Object.keys(N.audio).forEach((id) => attach(id, N.audio[id].s)); render(); };
   $('netStart').onclick = start;

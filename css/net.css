@@ -26,6 +26,7 @@
 .net-btn.big { font-size: 17px; padding: 15px 24px; }
 .net-btn.sel { border-color: #3dff8b; color: #3dff8b; background: rgba(61, 255, 139, .08); }
 .net-btn.seat { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; font-size: 18px; }
+.net-btn.seat.opt { font-size: 15px; padding-top: 8px; padding-bottom: 8px; margin-top: 8px; } .net-btn.seat.opt small { font-size: 9px; letter-spacing: 1px; }
 .net-btn.seat small { font-size: 10px; letter-spacing: 1.5px; font-weight: 400; opacity: .7; }
 .net-sub { display: flex; align-items: flex-end; justify-content: space-between; }
 .net-link { background: none; border: none; color: #ffb000; font-size: 11px; letter-spacing: 2px; padding: 0 0 6px; }
@@ -46,7 +47,7 @@
 .net-m.talk { border-color: #3dff8b; box-shadow: 0 0 0 1px #3dff8b inset; }
 .net-m.empty { color: #4d586a; border-style: dashed; background: none; font-size: 11px; letter-spacing: 2px; }
 .net-m .role { font-weight: 700; font-size: 11px; letter-spacing: 2px; padding: 3px 8px; border-radius: 4px; }
-.net-m .role.pilot { background: #ff6a00; color: #0b0b0b; } .net-m .role.tower { background: #4aa8ff; color: #06121f; }
+.net-m .role.pilot { background: #ff6a00; color: #0b0b0b; } .net-m .role.tower { background: #4aa8ff; color: #06121f; } .net-m .role.saboteur { background: #ff3b30; color: #fff; } .net-m .role.attendant { background: #3dff8b; color: #06200f; }
 .net-m .mic { font-size: 10px; color: var(--dim); min-width: 92px; text-align: right; }
 .net-modes { display: flex; flex-direction: column; gap: 6px; }
 .net-mode { text-align: left; padding: 8px 12px; border-radius: 7px; border: 1px solid #39414e; background: #10141a; color: #fff; display: flex; gap: 12px; align-items: baseline; }

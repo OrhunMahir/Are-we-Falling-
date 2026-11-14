@@ -34,6 +34,11 @@
 #booze b { font-family: var(--mono); font-size: 15px; letter-spacing: 1.5px; color: var(--amber); display: block; }
 #booze span { font-family: var(--mono); font-size: 10px; color: #a9905e; }
 
+/* cigarette smoke hanging in the cockpit */
+#haze { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; pointer-events: none; opacity: 0; transition: opacity .7s;
+  background: radial-gradient(60% 46% at 30% 40%, rgba(228,228,222,.85), rgba(228,228,222,0) 70%), radial-gradient(56% 50% at 72% 56%, rgba(214,214,208,.8), rgba(214,214,208,0) 70%), radial-gradient(80% 60% at 50% 100%, rgba(204,204,198,.65), rgba(204,204,198,0) 75%), rgba(186,187,183,.5);
+  background-size: 170% 170%, 180% 180%, 150% 150%, auto; animation: hazeDrift 24s ease-in-out infinite alternate; }
+@keyframes hazeDrift { from { background-position: 0% 0%, 100% 30%, 50% 100%, 0 0; } to { background-position: 60% 45%, 15% 80%, 25% 85%, 0 0; } }
 /* drunk eyelids */
 .lid { display: none; position: absolute; left: -12%; width: 124%; height: 0; background: #000; z-index: 2; pointer-events: none; }
 #lidT { top: -40px; border-radius: 0 0 50% 50% / 0 0 110px 110px; box-shadow: 0 0 46px 34px #000; padding-top: 40px; box-sizing: content-box; }

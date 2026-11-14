@@ -1,6 +1,6 @@
 # Are We Falling?
 
-A two-player talking game made at **HACK//OPS Game Jam Munich** (14 November 2026) by Orhun Mahir and Efe Kaan Salici.
+A talking game for two to four players, made at **HACK//OPS Game Jam Munich** (14 November 2026) by Orhun Mahir, Efe Kaan Salıcı and Batu Dallıağaç.
 
 One player is the **pilot**, sitting in a failing 3D cockpit with about eighty unnamed panels. The other is the **tower**, who has the emergency handbook but cannot see the cockpit. They can only talk. The pilot describes what they see, the tower reads the right chapter and says what to do, before the timer hits zero.
 
@@ -20,7 +20,7 @@ Play it by opening `index.html` in a browser. No install, no build step.
 | MAYDAY | 5 | 7:00 | the far side and the ceiling too |
 | BLACK BOX | 7 | 10:00 | anywhere, even on the wall behind the seat |
 
-Eight systems can fail: circuit breakers, engine fire, nav radio, hydraulics, cabin intercom, landing gear, transponder and override keys. A **wrong switch means turbulence**: the cockpit shakes and the cabin gets angrier. On top of that the **passengers** get restless and the pilot has to calm them with the right announcement, and there is a **bottle of whiskey** on the dash: every sip buys 8 seconds, but the cockpit gets blurry and the eyelids start to droop.
+Eight systems can fail: circuit breakers, engine fire, nav radio, hydraulics, cabin intercom, landing gear, transponder and override keys. A **wrong switch means turbulence**: the cockpit shakes and the cabin gets angrier. On top of that the **passengers** get restless and the pilot has to calm them with the right announcement, and there is a **bottle of whiskey** on the dash: every sip buys 8 seconds, but the cockpit gets blurry and the eyelids start to droop. Next to it stands an **ashtray**: a drag clears the head, but smoke too much and the cockpit fills with haze until the panels are hard to see. The smoke clears slowly by itself.
 
 ## Controls
 
@@ -45,7 +45,7 @@ When the flight ends the handbook is put down and the head follows the aircraft 
 ## Playing together
 
 - **Same room:** one screen runs the cockpit, a second device opens `manual.html` (the title screen shows a QR code when the game is served over http).
-- **Online:** press **PLAY ONLINE**, create a lobby and give the four-character code to your partner, or use one of the public lobbies (ALPHA to HOTEL). Pick seats in the lobby. Voice chat is built in, with a radio effect; the mic can be open, push to talk or muted.
+- **Online:** press **PLAY ONLINE**, create a lobby and give the four-character code to your partner, or use one of the public lobbies (ALPHA to HOTEL). Pick seats in the lobby: PILOT and TOWER are needed, **SABOTEUR** and **ATTENDANT** are optional seats in the aircraft cabin. The saboteur sits among the passengers and does small jobs that cost the pilot time; the flight attendant does jobs that win time back. Voice chat is built in, with a radio effect; the mic can be open, push to talk or muted.
 
 Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling server, peer to peer data and audio. No own server is needed. `?peer=host:port` points the game at another PeerServer for testing.
 
@@ -58,7 +58,7 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 - Tower endings without a pilot: `manual.html?crash=1` plays a burning flight that ends in the tower, `manual.html?land=1` one that is saved. Add `&outside=1` to watch either from the outside cameras.
 - Browsers cache `manual.html` and `js/tower3d.js` hard while you edit them. If a change does not show, reload with Cmd+Shift+R (or clear the cache); inside the online tower seat the handbook is a frame, so reload the game page too.
 
-- The cabin (work in progress): `cabin.html?role=saboteur` or `cabin.html?role=attendant` on a static server. See [ROADMAP.md](ROADMAP.md), "The cabin".
+- The cabin on its own, for trying task pools: `cabin.html?role=saboteur` or `cabin.html?role=attendant` on a static server. See [ROADMAP.md](ROADMAP.md), "The cabin".
 
 
 ## File map
@@ -67,14 +67,14 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 |---|---|---|
 | `index.html`, `css/style.css`, `css/cockpit3d.css` | title screen, HUD, end screen | Orhun |
 | `js/rules.js` | **every rule of the game** (failures, tables, handbook texts, flight generation, flight code, picture dealing). Loaded by the cockpit and by the handbook, so they cannot disagree | Orhun |
-| `js/game.js` | flight loop, timer, strikes, cabin panic, whiskey, HUD | Orhun |
+| `js/game.js` | flight loop, timer, strikes, cabin panic, whiskey, cigarettes, HUD | Orhun |
 | `js/cockpit3d.js` | 3D cockpit engine: surfaces, panel slots, controls, picking, camera, hand, stand and sit, knob mode, dash toy | Orhun |
 | `js/modules3d.js` | the eight failing panels | Orhun |
 | `js/decoys.js` | the dozens of working panels that only look busy | Orhun |
 | `js/audio.js`, `audio/` | sound engine, voices, music and effects (made with ElevenLabs) | Orhun |
 | `js/sky.js` | the storm outside the cockpit | Orhun |
 | `js/net.js`, `css/net.css` | lobbies, seats, voice chat, state sync | Orhun |
-| `cabin.html`, `js/cabin3d.js` | the aircraft cabin for the two planned seats, on a test page of its own (work in progress, not linked from the game) | Orhun |
+| `cabin.html`, `js/cabin3d.js` | the aircraft cabin where the saboteur and the flight attendant play; also a test page of its own | Orhun |
 | `js/roles/saboteur.js` | the saboteur's task pool | **Batu** |
 | `js/roles/attendant.js` | the flight attendant's task pool | **Efe** |
 | `manual.html` (handbook content and flight code box) | the tower handbook, generated from `rules.js` | Orhun |
@@ -84,7 +84,7 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 | `classic.html` | the first 2D version of the cockpit, kept as a fallback | nobody, leave it |
 | `js/vendor/` | three.js r159, PeerJS, QR code, bundled GLTF loader | do not edit |
 
-See [ROADMAP.md](ROADMAP.md) for what is done, what is planned and how the work is split. Planned next: two optional seats in the cabin, a **saboteur** (Batu) whose sabotage shortens the time to impact, and a **flight attendant** (Efe) whose work buys the pilot time.
+See [ROADMAP.md](ROADMAP.md) for what is done, what is planned and how the work is split. The two optional cabin seats, **saboteur** (Batu) and **flight attendant** (Efe), are in the online lobby in a first version; what is still open is listed there.
 
 ## 3D models (Meshy)
 

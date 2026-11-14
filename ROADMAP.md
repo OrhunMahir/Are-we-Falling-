@@ -39,6 +39,7 @@ The game (pilot side, `js/net.js`) sends `st` twice a second; the tower view pas
 | `k` | wrong actions so far (0 to 3) |
 | `s`, `n` | failures solved, failures in total |
 | `o` | ids of the failures still open: `breakers`, `fire`, `radio`, `hyd`, `intercom`, `gear`, `xpdr`, `keys` |
+| `u`, `tb` | how angry the cabin is (0 to 1) and how hard the aircraft is shaking right now (0 to 1). New, read by the cabin seats; the tower room can ignore them |
 
 Today the tower room uses it like this: the aircraft comes closer as time runs out; flame and dark smoke while `fire` is open or `k` is 2 or more; white mist while `hyd` is open; flickering lights while `breakers` is open. On `crashed` it banks round and flies into the tower windows (4 to 7 s), then the impact plays in the cab. On `landing` and `won` it flies a curve down to the runway and touches down **6.5 s after the phase starts** (so it lines up with the touchdown sound the pilot screen plays at 7 s), then brakes to a stop. Without a link it plays a demo loop.
 
@@ -58,6 +59,7 @@ Two more places use the tower room, so please keep them working when you change 
 - Standing up and sitting down to reach the rear wall
 - Restless passengers and captain's announcements, cabin panic bar
 - Whiskey bottle, blur and drooping eyelids, sobering up
+- Ashtray on the dash: the pilot can have a smoke. A drag clears the head a little (less whiskey blur), but every drag adds smoke to the cockpit. Too many and the panels disappear in the haze and the pilot coughs; the smoke thins out by itself, slowly (about 40 seconds for a full cockpit)
 - Voices, music and effects with ElevenLabs
 - Online lobbies (private code and eight public lobbies), seats, voice chat with a radio effect, push to talk, return to lobby, swap seats
 - 3D tower room: dusk sky, runway lights, the aircraft seen through the windows with smoke that matches the failures
@@ -72,6 +74,8 @@ Two more places use the tower room, so please keep them working when you change 
 - Handbook: read pages pile up over the clip like a notepad and come back down when you go back; the handbook is put down by itself at the end of a flight
 - The old flat desk in the peek view is gone: one wooden desk from the window to the controller
 - Phone fallback: plain handbook
+- **The two cabin seats are in the online lobby**: SABOTEUR and ATTENDANT, both optional, one of each. They play in the cabin (`cabin.html` in a frame). The saboteur plays Batu's first-person version (`js/roles/intruder-play.js`: walking with W A S D, suspicion bar, chest bomb, blackout, smoke and mask effects); the flight attendant plays the simple task runner until Efe's version is there. Tasks are dealt from the flight code; a finished task changes the real time to impact; the pilot gets a message, a line in the log and the cabin's reaction (turbulence, angrier passengers; calmer passengers for the flight attendant); the tower gets a note; the two cabin players see each other walk and sit; at the end each of them is told who won
+- Three ways to work a task: hold E, tap Q and E in turns, type a short key code (`input: 'hold' | 'mash' | 'code'` in the task pool)
 - The aircraft cabin, first version, on a page of its own (`cabin.html`): nine rows of seats with passengers, aisle, galley, lavatory, cockpit door, walking, sitting down in any free seat, and a test runner that deals the tasks of a role from `js/roles/`
 
 ## Planned next
@@ -80,7 +84,7 @@ Nothing below is started. Order to be decided by Orhun.
 
 1. ~~Crash into the tower~~ and 2. ~~the nicer landing shot~~ are done (see Done). Orhun may want the crash on the pilot's end screen too: `KKTower.start(canvas, { view: 'outside' })` plus the same `st` shows it from outside.
 3. **Nicer aircraft textures** on the airliner seen from the tower. (Efe, with a new Meshy model or textures.)
-4. **The aircraft cabin, second half** (Orhun). The room exists (see Done and [The cabin](#the-cabin-first-version-is-in)). Still open: the two seats in the lobby, dealing the tasks from the flight code inside the real game, applying `effect` to the real clock, showing the other players in the cabin, telling the pilot and the tower what happened.
+4. **The cabin seats, what is still open** (Orhun). The seats are in the lobby and move the real clock (see Done and [The cabin](#the-cabin-first-version-is-in)). Still open: the flight attendant taking the passengers over from the pilot's PA; stalling and catching the saboteur (`noise`); the effects `calls`, `door` and `block`, and a real `blackout` (today it is one flicker); `once`; Batu's Meshy models and loop sounds in the cabin; the cabin seats watching the landing and the crash; cabin seats in same-room play without a lobby.
 5. **The saboteur seat** (Batu) and **the flight attendant seat** (Efe, after items 1 to 3). See [The four seats](#the-four-seats).
 6. **Cockpit door** that opens and closes once somebody plays in the cabin. (Orhun.)
 7. **Rosebud version** after the itch.io submission, if the organisers ask for it.
@@ -93,7 +97,7 @@ A flight needs only two seats, **pilot** and **tower**. The other two are option
 |---|---|---|---|---|
 | Pilot | yes | cockpit | fix the failures before the time runs out | Orhun |
 | Tower | yes | tower room | read the handbook to the pilot | Orhun (handbook), Efe (tower room) |
-| Intruder | optional | cabin, among the passengers | make the aircraft go down | **Batu** |
+| Saboteur | optional | cabin, among the passengers | make the aircraft go down | **Batu** |
 | Flight attendant | optional | cabin | keep the cabin calm and the saboteur busy | **Efe** |
 
 The earlier idea of a second villain seat (a helper in a basement with a manual of their own) is **cancelled**. The fourth seat is the flight attendant.
@@ -102,13 +106,15 @@ The earlier idea of a second villain seat (a helper in a basement with a manual 
 
 ### Saboteur (Batu)
 
+**Name: SABOTEUR.** Orhun decided on 14 November (15:47) that this seat is called Saboteur, on screen as well as in the code. The paragraph below still says INTRUDER and is out of date on that one point. Batu, please rename what the player sees: `seat: 'INTRUDER'` in `js/roles/saboteur.js` and the titles in `intruder.html` and `js/roles/intruder-play.js`.
+
 On screen this seat is called **INTRUDER**. In the code it stays `saboteur` (`KK.ROLES.saboteur`, `cabin.html?role=saboteur`); `js/roles/saboteur.js` also registers it as `KK.ROLES.intruder`. The pool has 11 tasks with sounds (`audio/int_*.mp3`) and three Meshy models (`js/roles/intruder-models.js`, load it after `js/models.js`).
 
 **Playable now on its own page: `intruder.html`** (static server, `?seed=1234` for a fixed deal). `js/roles/intruder-play.js` (`KKIntruder.start(cabin, { seed })`) sits on top of `js/cabin3d.js` through its public object only: first-person W A S D walking with mouse look (pointer lock), tasks done with E (hold), Q+E (mash) or a Q/E code, effects (turbulence and panic through `setState`, blackout, smoke and dropped masks as screen overlays, the cockpit door through `setDoor`), the chest bomb seen when looking down, and a flight attendant who patrols the aisle and fills a SUSPICION bar when she sees loud work. Orhun: to put the seat into the real game, start `KKIntruder` on the cabin in the intruder seat and read `play.state.clock` changes (or replace the stand-in clock with the real one).
 
 - Sits in the cabin as one of the passengers.
 - Every flight deals a few **sabotage tasks from a pool, at random**, so no two flights are the same. Examples from Orhun: go into the lavatory and block the ventilation, clog the toilet, stir up the other passengers. Batu designs the pool: what each task is, where it happens, what the player has to do on screen, how long it takes.
-- Can **stand up and sit down in any empty seat**, to get near a task or away from the flight attendant.
+- Sits **in the same seats as the passengers**: can stand up and sit down in any empty seat they like, to get near a task or away from the flight attendant.
 - **Every finished sabotage shortens the time to impact.**
 - If nobody takes the seat there is no saboteur and the flight plays as it does today.
 
@@ -117,13 +123,14 @@ On screen this seat is called **INTRUDER**. In the code it stays `saboteur` (`KK
 - Works in the cabin.
 - **Calms the passengers.** With a flight attendant on board this is their job; without one the pilot keeps doing it over the PA, as today.
 - **Stalls and distracts the saboteur**, so that sabotage takes longer or fails.
+- Can **sit down in any empty seat** too, like the saboteur.
 - Has a **task pool of their own**, dealt at random like the saboteur's. Efe designs it.
 - **Every finished task gives the pilot extra time.**
 - Stretch goal, only if there is time at the very end: the flight attendant can catch the saboteur.
 
 ### The cabin (first version is in)
 
-The cabin is a room of its own in `js/cabin3d.js`, and `cabin.html` is a test page for it. It is not linked from the game yet, so it cannot break the submission. **Batu and Efe: this is where you start.**
+The cabin is a room of its own in `js/cabin3d.js`. `cabin.html` shows it: on its own as a test page, and inside the online lobby for the two cabin seats. **Batu and Efe: the test page is where you try your tasks.**
 
 Open it with a static server (`python3 -m http.server 8765`, then `http://localhost:8765/cabin.html`):
 
@@ -133,7 +140,7 @@ Open it with a static server (`python3 -m http.server 8765`, then `http://localh
 
 Controls: drag to look, click a free seat or a door to walk there, W and S walk along the aisle, F stands up or sits down in the nearest free seat, hold E to work on a task when you are in the right place. The box in the lower left corner makes the passengers angry, shakes the cabin and opens the cockpit door, for testing.
 
-The page reads `KK.ROLES[role]`, deals `perFlight` tasks, marks their places with a ring on the floor, runs the hold timer and adds `effect` to a stand-in clock. So a task pool can be written and tried today, without waiting for the lobby.
+The page reads `KK.ROLES[role]`, deals `perFlight` tasks, marks their places with a ring on the floor, runs the task and adds `effect` to a stand-in clock. So a task pool can be tried on this page alone, without a lobby and a second player.
 
 What is in the room: nine rows, seats A to F, about two thirds taken; the galley and the cockpit door at the front; the lavatory (toilet, sink, ventilation grille) at the rear left; a second galley at the rear right.
 
@@ -152,7 +159,13 @@ The cabin does not know the game or the tasks. It offers this, and the game side
 | `setDoor(true)` | opens or closes the cockpit door |
 | `stop()` | ends it |
 
-Not there yet: the cabin is not in the lobby, the clock on the page is not the real one, the other player on the page is a dummy that does not move, and nobody can interrupt anybody. If a task needs something the cabin does not have (an object to click, a new place, a way to stall the saboteur), tell Orhun.
+**The saboteur in the lobby plays Batu's version.** `cabin.html?embed=1&role=saboteur` starts `KKIntruder` (`js/roles/intruder-play.js`) on the cabin, writes the real time to impact into `play.state.clock`, reports every finished task to the pilot's game and replaces its end card with the real end of the flight. Add `&plain=1` to get the simple task runner instead. The flight attendant plays the simple task runner until Efe's version is there.
+
+**In the lobby.** `js/net.js` shows the cabin page to the two cabin seats instead of the handbook (`cabin.html?embed=1&role=...`), in the same frame the tower uses. The flight state goes in as `postMessage({ awf: 1, st })`, exactly like the tower. A finished task comes out as `postMessage({ awf: 1, cab: { k: 'task', id, title, effect, fx } })`, the lobby passes it to everybody as `{ t: 'cab', ... }`, and the pilot's game takes it in `cabinTask` (`js/game.js`). Positions travel the same way with `k: 'pos'`.
+
+What the game does with a task today: `effect` is added to the time to impact (never below 5 seconds, never above the total). From `fx` it understands `turbulence`, `panic` (with `amount`), `masks`, `smoke` and `blackout`. `sound` is played in the cabin when the task is finished. Every finished flight attendant task also calms the passengers a little. The other fields in Batu's pool (`spot`, `noise`, `once`, `models`, `sounds`, the effects `calls`, `door`, `block`) are read by nobody yet.
+
+Not there yet: see item 4 under [Planned next](#planned-next). If a task needs something the cabin does not have (an object to click, a new place, a way to stall the saboteur), tell Orhun.
 
 ### How the three parts fit together
 

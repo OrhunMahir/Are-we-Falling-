@@ -4,5 +4,5 @@ set -e
 cd "$(dirname "$0")/.."
 OUT=arewefalling-itch.zip
 [ -f "$OUT" ] && rm "$OUT"
-zip -q -r "$OUT" index.html classic.html manual.html css js audio
+zip -q -r "$OUT" index.html classic.html manual.html cabin.html css js audio -x "audio/extra/*" "audio/raw/*" "audio/raw2/*"   # the game only plays the files directly in audio/
 du -sh "$OUT"

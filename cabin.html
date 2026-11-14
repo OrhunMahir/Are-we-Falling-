@@ -36,6 +36,14 @@
   #hint b { color: var(--txt); font-weight: 400; }
   #dbg { left: 16px; bottom: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--dim); }
   #dbg label { display: flex; align-items: center; gap: 8px; margin-top: 4px; } #dbg input[type=range] { width: 110px; }
+  #holdT kbd.ok { background: var(--green); }
+  #end { left: 50%; top: 38%; transform: translate(-50%, -50%); text-align: center; font-size: 20px; letter-spacing: 1px; padding: 22px 34px; display: none; }
+  #end.show { display: block; } #end b { display: block; font-size: 40px; letter-spacing: 2px; margin-bottom: 6px; }
+  #end.ok { border-color: var(--green); } #end.ok b { color: var(--green); } #end.bad { border-color: var(--red); } #end.bad b { color: var(--red); }
+  body.embed #dbg { display: none; }
+  #end { z-index: 60; }
+  body.sabplay #where, body.sabplay #tasks, body.sabplay #hold, body.sabplay #toast, body.sabplay #hint, body.sabplay #top { display: none !important; }
+  body.embed #ixEndB, body.over #ixEnd { display: none !important; }
   @media (max-width: 1100px) { #hint { display: none; } }
 </style>
 </head>
@@ -46,7 +54,8 @@
 <div id="tasks" class="hud"><div id="clock">TIME TO IMPACT <b id="clockT">7:00</b></div><div id="list"></div></div>
 <div id="hold" class="hud"><div id="holdT"></div><div class="bar"><i id="holdB"></i></div></div>
 <div id="toast" class="hud"></div>
-<div id="hint" class="hud"><b>DRAG</b> look · <b>CLICK</b> a free seat or a door to go there · <b>W S</b> walk the aisle · <b>F</b> stand up, sit down · hold <b>E</b> to work</div>
+<div id="end" class="hud"></div>
+<div id="hint" class="hud"><b>DRAG</b> look · <b>CLICK</b> a free seat or a door to go there · <b>W S</b> walk the aisle · <b>F</b> stand up, sit down · <b>E</b> and <b>Q</b> work on a task</div>
 <div id="dbg" class="hud">TEST CONTROLS
   <label><input id="dUnrest" type="range" min="0" max="100" value="0"> PASSENGERS ANGRY</label>
   <label><input id="dTurb" type="range" min="0" max="100" value="0"> TURBULENCE</label>
@@ -59,73 +68,173 @@
 <script src="js/roles/attendant.js" onerror="void 0"></script>
 <script src="js/cabin3d.js"></script>
 <script>
-/* The cabin test page. It stands in for the game until the cabin seats are wired into the lobby:
-   it deals the tasks of one role from KK.ROLES, runs them and moves a stand-in clock. */
+/* The cabin page. Two ways to run it:
+   - on its own (cabin.html?role=saboteur): a test page with a stand-in clock and test controls;
+   - inside the online lobby (cabin.html?embed=1&role=...): js/net.js puts it in a frame for the two cabin seats,
+     sends the flight state in with postMessage({ awf: 1, st }) and gets finished tasks back with
+     postMessage({ awf: 1, cab: { k: 'task', id, title, effect, fx } }).
+   Either way it deals the tasks of one role from KK.ROLES and runs them. */
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
   const q = new URLSearchParams(location.search);
   const role = q.get('role') === 'attendant' ? 'attendant' : 'saboteur';
+  const embed = q.get('embed') === '1';
+  const ROLE_NAME = { saboteur: 'SABOTEUR', attendant: 'FLIGHT ATTENDANT' };
+  if (embed) { document.body.classList.add('embed'); $('top').innerHTML = '<b>' + ROLE_NAME[role] + '</b> · ' + (role === 'saboteur' ? 'BRING THE AIRCRAFT DOWN. DO NOT GET NOTICED.' : 'KEEP THE CABIN CALM. BUY THE PILOT TIME.'); }
+  else $(role === 'attendant' ? 'rAtt' : 'rSab').className = 'on';
+  const up = (m) => { try { if (embed && window.parent !== window) window.parent.postMessage({ awf: 1, cab: m }, '*'); } catch (e) {} };
+
+  // in the lobby the passengers and the tasks come from the flight code, so wait for it
+  if (embed && !+q.get('seed')) {
+    $('whereT').textContent = 'BOARDING…'; $('tasks').style.display = 'none';
+    window.addEventListener('message', (e) => { const d = e.data; if (d && d.awf === 1 && d.st && d.st.f && (d.st.ph === 'intro' || d.st.ph === 'flight')) location.replace('cabin.html?embed=1&role=' + role + '&seed=' + (+d.st.f)); });
+    return;
+  }
   const seed = +q.get('seed') || 1000 + Math.floor(Math.random() * 9000);
-  $(role === 'attendant' ? 'rAtt' : 'rSab').className = 'on';
   const cabin = window.KKCabin && KKCabin.start($('cab'), { seed, role, seat: q.get('seat') });
   if (!cabin) { $('whereT').textContent = 'NO 3D ON THIS DEVICE'; return; }
+  try { window.focus(); } catch (e) {}
 
-  // somebody else on board, so both avatars can be looked at
-  if (role === 'saboteur') cabin.setActor('other', { role: 'attendant', at: 'galley' });
-  else { const free = cabin.seats.filter((s) => !s.taken); cabin.setActor('other', { role: 'saboteur', at: free[seed % free.length].id }); }
+  // In the lobby the saboteur seat is played with Batu's first-person layer (js/roles/intruder-play.js):
+  // it brings its own walking, task screen, effects and sounds. This page only connects it to the flight.
+  if (embed && role === 'saboteur' && q.get('plain') !== '1') {
+    const load = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
+    load('js/vendor/gltf.min.js').catch(() => {}).then(() => load('js/roles/intruder-models.js')).catch(() => {}).then(() => load('js/roles/intruder-play.js'))
+      .then(() => { if (window.KKIntruder) intruder(); else plain(); }).catch(() => plain());
+  } else plain();
 
-  // deal the tasks of this role from the flight code, so every screen would get the same ones
+  function intruder() {
+    document.body.classList.add('sabplay');   // not 'ix': that class belongs to the layer's own boxes
+    const play = KKIntruder.start(cabin, { seed, canvas: $('cab'), seat: cabin.player.seat && cabin.player.seat.id, clock: 420 });
+    const sent = {}; let phase = 'intro', lastAt = '', posT = 0, over = false;
+    const endCard = (cls, html) => { over = true; document.body.classList.add('over'); $('end').className = 'hud show ' + cls; $('end').innerHTML = html; try { document.exitPointerLock(); } catch (e) {} };
+    setInterval(() => {
+      const S = play.state, P = cabin.player;
+      S.tasks.forEach((t) => { if (t.done && !sent[t.def.id]) { sent[t.def.id] = 1; up({ k: 'task', id: t.def.id, title: t.def.title, effect: t.def.effect, fx: t.def.fx || [] }); } });
+      let here = P.seat ? P.seat.id : KKIntruder.placeAt(P.x, P.z); if (here === 'cockpit') here = 'door';
+      posT += 0.25; if (here !== lastAt || posT > 3) { posT = 0; lastAt = here; up({ k: 'pos', at: here }); }
+      // its end card says the aircraft is going down as soon as the last job is done; the flight is still on, so say that
+      if (S.done && !S.caught && !over && phase === 'flight' && S.tasks.every((t) => t.done)) endCard('bad', '<b>EVERY SABOTAGE IS DONE</b>Now wait and see if they still make it.');
+    }, 250);
+    window.addEventListener('message', (e) => {
+      const d = e.data; if (!d || d.awf !== 1 || !d.st) return;
+      const st = d.st;
+      if (st.f && +st.f !== seed && (st.ph === 'intro' || st.ph === 'flight')) { location.replace('cabin.html?embed=1&role=' + role + '&seed=' + (+st.f)); return; }
+      if (st.tl != null && !play.state.done) play.state.clock = Math.max(1, +st.tl);   // the real time to impact
+      if (st.ph && st.ph !== phase) {
+        phase = st.ph;
+        if (phase === 'landing' || phase === 'won') { endCard('bad', '<b>THE AIRCRAFT LANDED</b>The crew beat you.'); try { play.stop(); } catch (er) {} }
+        else if (phase === 'crashed') { endCard('ok', '<b>AIRCRAFT LOST</b>That was your doing.'); try { play.stop(); } catch (er) {} }
+      }
+    });
+    window.__cabin = { cabin, play, tasks: play.state.tasks, seed, role, embed, get clock() { return play.state.clock; }, get phase() { return phase; } };
+  }
+
+  function plain() {
+  // the test page shows a stand-in for the other seat; in the lobby the real one is drawn when they report in
+  if (!embed) {
+    if (role === 'saboteur') cabin.setActor('other', { role: 'attendant', at: 'galley' });
+    else { const free = cabin.seats.filter((s) => !s.taken); cabin.setActor('other', { role: 'saboteur', at: free[seed % free.length].id }); }
+  }
+
+  // deal the tasks of this role from the flight code, so every screen gets the same ones
   const pool = (window.KK && KK.ROLES && KK.ROLES[role]) || { perFlight: 0, tasks: [] };
   const rng = KK.makeRng((seed * 31 + (role === 'attendant' ? 7 : 3)) >>> 0);
   const deck = pool.tasks.slice();
   for (let i = deck.length - 1; i > 0; i--) { const j = rng.int(0, i); const t = deck[i]; deck[i] = deck[j]; deck[j] = t; }
-  const tasks = deck.slice(0, pool.perFlight || 3).map((def) => ({ def, done: false, prog: 0 }));
+  const tasks = deck.slice(0, pool.perFlight || 3).map((def) => ({ def, done: false, prog: 0, idx: 0, last: '' }));
 
   const NAMES = { seat: 'ANY SEAT', aisle: 'AISLE', lavatory: 'LAVATORY', galley: 'GALLEY', door: 'COCKPIT DOOR' };
   const fmt = (s) => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
-  let clock = 420, cur = null, eDown = false, toastT = 0;
+  const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const sgn = (n) => (n > 0 ? '+' : '') + n;
+  let clock = embed ? 0 : 420, phase = embed ? 'intro' : 'flight', cur = null, eDown = false, toastT = 0, lastAt = '';
   function paint() {
-    $('list').innerHTML = tasks.length ? tasks.map((t) => '<div class="task' + (t.done ? ' done' : '') + (t === cur ? ' here' : '') + '"><h4>' + t.def.title + '<span>' + (t.def.effect > 0 ? '+' : '') + t.def.effect + ' s</span></h4><p>' + t.def.brief + '</p><em>' + (t.done ? 'DONE' : '▸ ' + (NAMES[t.def.place] || t.def.place)) + '</em></div>').join('')
+    $('list').innerHTML = tasks.length ? tasks.map((t) => '<div class="task' + (t.done ? ' done' : '') + (t === cur ? ' here' : '') + '"><h4>' + esc(t.def.title) + '<span>' + sgn(t.def.effect) + ' s</span></h4><p>' + esc(t.def.brief) + '</p><em>' + (t.done ? 'DONE' : '▸ ' + (NAMES[t.def.place] || esc(t.def.place))) + '</em></div>').join('')
       : '<div class="task"><p>No task pool for this seat yet. Add tasks to js/roles/' + role + '.js.</p></div>';
     cabin.setMarks(tasks.filter((t) => !t.done).map((t) => t.def.place));
   }
-  function toast(txt) { $('toast').textContent = txt; $('toast').classList.add('show'); toastT = 2.6; }
+  function toast(txt) { $('toast').textContent = txt; $('toast').classList.add('show'); toastT = 2.8; }
   function where() {
     const a = cabin.at();
     $('whereT').textContent = a.place === 'seat' ? 'SEAT ' + a.seat : a.place === 'moving' ? 'WALKING…' : (NAMES[a.place] || a.place);
+    const here = a.place === 'seat' ? a.seat : a.place;
+    if (a.place !== 'moving' && here !== lastAt) { lastAt = here; up({ k: 'pos', at: here }); }
     const before = cur;
-    cur = tasks.find((t) => !t.done && t.def.place === a.place) || null;
+    cur = phase === 'flight' ? tasks.find((t) => !t.done && t.def.place === a.place) || null : null;
     if (cur !== before) paint();
+  }
+  function finish(t) {
+    t.done = true;
+    if (!embed) clock = Math.max(0, clock + t.def.effect);
+    $('clockT').className = t.def.effect > 0 ? 'up' : 'down';
+    toast(t.def.title + ' · ' + sgn(t.def.effect) + ' SECONDS');
+    if (t.def.sound) { try { const a = new Audio('audio/' + String(t.def.sound).replace(/[^\w]/g, '') + '.mp3'); a.volume = 0.7; const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} }
+    up({ k: 'task', id: t.def.id, title: t.def.title, effect: t.def.effect, fx: t.def.fx || [] });
+    cur = null; paint(); where();
+  }
+  // how a task is worked: 'hold' (hold E), 'mash' (alternate Q and E), 'code' (type the keys in `code`)
+  function key(k) {
+    if (!cur) return;
+    const d = cur.def, mode = d.input || 'hold';
+    if (mode === 'mash') { if (k !== cur.last) { cur.last = k; cur.prog += d.seconds / 14; } }
+    else if (mode === 'code') { const code = String(d.code || 'QE').toLowerCase(); if (k === code[cur.idx]) { cur.idx++; cur.prog = d.seconds * cur.idx / code.length; } else { cur.idx = k === code[0] ? 1 : 0; cur.prog = d.seconds * cur.idx / code.length; } }
+  }
+  function holdLabel(t) {
+    const d = t.def, mode = d.input || 'hold';
+    if (mode === 'mash') return '<kbd>Q</kbd><kbd>E</kbd>TAP IN TURNS · ' + esc(d.title);
+    if (mode === 'code') return String(d.code || 'QE').toUpperCase().split('').map((c, i) => '<kbd' + (i < t.idx ? ' class="ok"' : '') + '>' + esc(c) + '</kbd>').join('') + 'TYPE · ' + esc(d.title);
+    return '<kbd>E</kbd>HOLD · ' + esc(d.title);
   }
   cabin.on('arrive', where); cabin.on('leave', where);
   cabin.on('hover', (h) => { $('hoverT').textContent = !h ? '' : h.seat ? 'CLICK: SIT IN ' + h.seat : 'CLICK: GO TO THE ' + NAMES[h.place]; });
-  window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'e') eDown = true; });
+  window.addEventListener('keydown', (e) => { const k = e.key.toLowerCase(); if (k === 'e') eDown = true; if ((k === 'e' || k === 'q') && !e.repeat) key(k); });
   window.addEventListener('keyup', (e) => { if (e.key.toLowerCase() === 'e') eDown = false; });
   $('dUnrest').oninput = (e) => cabin.setState({ unrest: e.target.value / 100 });
   $('dTurb').oninput = (e) => cabin.setState({ turb: e.target.value / 100 });
   $('dDoor').onchange = (e) => cabin.setDoor(e.target.checked);
 
-  let last = performance.now();
+  // the lobby sends the flight in: the clock, the mood of the cabin, the end, and where the other cabin seat is
+  window.addEventListener('message', (e) => {
+    const d = e.data; if (!embed || !d || d.awf !== 1) return;
+    if (d.st) {
+      const st = d.st;
+      if (st.f && +st.f !== seed && (st.ph === 'intro' || st.ph === 'flight')) { location.replace('cabin.html?embed=1&role=' + role + '&seed=' + (+st.f)); return; }
+      if (st.tl != null) clock = +st.tl;
+      cabin.setState({ unrest: +st.u || 0, turb: +st.tb || 0 });
+      if (st.ph && st.ph !== phase) {
+        phase = st.ph;
+        const up2 = phase === 'landing' || phase === 'won', down = phase === 'crashed', sab = role === 'saboteur';
+        $('end').className = up2 || down ? 'hud show ' + (up2 !== sab ? 'ok' : 'bad') : 'hud';
+        $('end').innerHTML = up2 ? (sab ? '<b>THE AIRCRAFT LANDED</b>The crew beat you.' : '<b>ON THE GROUND</b>You kept the cabin together.') : down ? (sab ? '<b>AIRCRAFT LOST</b>That was your doing.' : '<b>AIRCRAFT LOST</b>') : '';
+        if (down) cabin.setState({ turb: 1, unrest: 1 });
+      }
+    }
+    if (d.cab && d.cab.role && d.cab.role !== role) {
+      if (d.cab.k === 'pos' && d.cab.at) cabin.setActor('other', { role: d.cab.role, at: d.cab.at });
+      else if (d.cab.k === 'task') toast(d.cab.role === 'saboteur' ? 'SOMETHING IS WRONG IN THE CABIN' : 'THE FLIGHT ATTENDANT IS AT WORK');
+    }
+  });
+
+  let last = performance.now(), posT = 0;
   setInterval(() => {
     const now = performance.now(), dt = Math.min(0.25, (now - last) / 1000); last = now;
     where();
-    clock = Math.max(0, clock - dt); $('clockT').textContent = fmt(clock);
+    posT += dt; if (posT > 3) { posT = 0; if (lastAt) up({ k: 'pos', at: lastAt }); }   // say it again, the other page may have just loaded
+    if (!embed) clock = Math.max(0, clock - dt);
+    $('clockT').textContent = fmt(clock);
     if (toastT > 0) { toastT -= dt; if (toastT <= 0) { $('toast').classList.remove('show'); $('clockT').className = ''; } }
     $('hold').classList.toggle('show', !!cur);
     if (!cur) return;
-    if (eDown) cur.prog += dt;
-    $('holdT').innerHTML = '<kbd>E</kbd>HOLD · ' + cur.def.title;
+    if (eDown && (cur.def.input || 'hold') === 'hold') cur.prog += dt;
+    $('holdT').innerHTML = holdLabel(cur);
     $('holdB').style.width = Math.min(100, cur.prog / cur.def.seconds * 100) + '%';
-    if (cur.prog >= cur.def.seconds) {
-      cur.done = true; clock = Math.max(0, clock + cur.def.effect);
-      $('clockT').className = cur.def.effect > 0 ? 'up' : 'down';
-      toast(cur.def.title + ' · ' + (cur.def.effect > 0 ? '+' : '') + cur.def.effect + ' SECONDS');
-      cur = null; paint(); where();
-    }
+    if (cur.prog >= cur.def.seconds - 1e-6) finish(cur);
   }, 50);
   paint(); where();
-  window.__cabin = { cabin, tasks, seed, role, get clock() { return clock; } };
+  window.__cabin = { cabin, tasks, seed, role, embed, get clock() { return clock; }, get phase() { return phase; } };
+  }
 })();
 </script>
 </body>
