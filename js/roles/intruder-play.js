@@ -123,12 +123,71 @@
     });
     return pairs;
   }
-  function followPassengers(pairs) {
-    pairs.forEach(({ o, p }) => {
-      const a = o.userData, b = p.userData;
+  function followPassengers(pairs, t) {
+    pairs.forEach((q, i) => {
+      const { o, p } = q, a = o.userData, b = p.userData;
       b.head.rotation.copy(a.head.rotation);
       b.arms[0].rotation.x = -a.arms[0].rotation.x; b.arms[1].rotation.x = -a.arms[1].rotation.x;   // angry passengers throw their arms up
       p.position.y = -0.3 + (o.position.y || 0);
+      if (q.m) {   // a Meshy passenger: it turns and rocks with the cabin's own animation
+        const angry = Math.min(1, Math.abs(a.arms[0].rotation.x) / 2.5);
+        q.m.rotation.y = Math.PI + a.head.rotation.y * 0.35;
+        q.m.rotation.z = angry * Math.sin(t * 9 + i) * 0.06;
+        q.m.position.y = (o.position.y || 0) + angry * Math.abs(Math.sin(t * 7 + i)) * 0.03;
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------- Meshy figures (js/roles/cabin-people.js adds them to window.KK_GLB)
+  const PAX_MODELS = ['pax_w1', 'pax_m1', 'pax_w2', 'pax_m2', 'pax_w3', 'pax_m3'];
+  // loads js/roles/cabin-people.js once if the page did not (the lobby's cabin.html does not know about it)
+  const peopleWaiters = [];
+  function ensurePeople(cb) {
+    if (window.KK_GLB && window.KK_GLB.pax_w1) return cb();
+    peopleWaiters.push(cb);
+    if (peopleWaiters.length > 1) return;
+    const s = document.createElement('script'); s.src = 'js/roles/cabin-people.js';
+    s.onload = () => peopleWaiters.splice(0).forEach((f) => f());
+    s.onerror = () => console.warn('intruder: js/roles/cabin-people.js missing, blocky people stay');
+    document.head.appendChild(s);
+  }
+  function loadGLB(name, cb) {
+    const b64 = window.KK_GLB && window.KK_GLB[name];
+    if (!b64 || !T || !T.GLTFLoader) return false;
+    try {
+      const bin = atob(b64), buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      new T.GLTFLoader().parse(buf.buffer, '', (g) => { try { cb(g); } catch (e) { console.warn('model ' + name, e); } }, (e) => console.warn('model ' + name, e));
+      return true;
+    } catch (e) { console.warn('model ' + name, e); return false; }
+  }
+  // scale to a height, feet on y = 0, centred; Meshy models face +Z
+  function fitHeight(obj, height) {
+    obj.updateMatrixWorld(true);
+    const box = new T.Box3().setFromObject(obj), s = box.getSize(new T.Vector3()), c = box.getCenter(new T.Vector3()), k = height / (s.y || 1);
+    obj.scale.multiplyScalar(k); obj.position.set(-c.x * k, -box.min.y * k, -c.z * k);
+    obj.traverse((m) => { if (m.material && m.material.metalness !== undefined) { m.material.metalness = Math.min(m.material.metalness, 0.1); m.material.roughness = Math.max(m.material.roughness, 0.6); } if (m.isMesh) m.frustumCulled = false; });
+    const g = new T.Group(); g.add(obj); g.userData.depth = s.z * k; g.userData.h = height; return g;
+  }
+  function meshyPassengers(W) {
+    PAX_MODELS.forEach((name, v) => loadGLB(name, (gltf) => {
+      const base = fitHeight(gltf.scene, 1.22);
+      const cup = new T.Mesh(new T.CylinderGeometry(0.05, 0.038, 0.07, 12), lam(0xf2d024)); cup.name = 'facecup'; cup.rotation.x = Math.PI / 2; cup.position.set(0, 1.22 * 0.86, base.userData.depth * 0.42); cup.visible = false; base.add(cup);
+      W.pax.forEach((q, i) => {
+        if (i % PAX_MODELS.length !== v || q.m) return;
+        const m = base.clone(true); m.position.copy(q.o.position); m.rotation.y = Math.PI;
+        W.scene.add(m); q.m = m; q.p.visible = false;
+        const f = m.getObjectByName('facecup'); if (f) W.faces.push({ f, delay: 0.8 + Math.random() * 2.2 });
+      });
+    }));
+  }
+  // a rigged Meshy crew member with a walk cycle; falls back to the blocky figure while missing
+  function meshyCrew(scene, name, height, holder) {
+    return loadGLB(name, (gltf) => {
+      const g = fitHeight(gltf.scene, height);
+      const outer = new T.Group(); g.rotation.y = Math.PI; outer.add(g); scene.add(outer);
+      holder.model = outer;
+      if (gltf.animations && gltf.animations.length) { holder.mixer = new T.AnimationMixer(gltf.scene); holder.action = holder.mixer.clipAction(gltf.animations[0]); holder.action.play(); }
     });
   }
   // pose a person: moving swings arms and legs, working raises the arms, tackle throws them forward, seated sinks
@@ -171,6 +230,7 @@
     W.faces = [];
     const faceCup = new T.CylinderGeometry(0.052, 0.04, 0.07, 12);
     W.pax.forEach(({ p }) => { const f = new T.Mesh(faceCup, lam(0xf2d024)); f.rotation.x = Math.PI / 2; f.position.set(0, -0.04, -0.13); f.visible = false; p.userData.head.add(f); W.faces.push({ f, delay: 0.8 + Math.random() * 2.2 }); });
+    ensurePeople(() => meshyPassengers(W));
     W.maskT = -1;
     // call buttons: a blue lamp over every row that blinks while the bells ring
     W.calls = new T.Group(); W.calls.visible = false; scene.add(W.calls);
@@ -213,7 +273,7 @@
   }
   function updateWorldFx(W, fx, t) {
     if (!W) return;
-    if (W.pax) followPassengers(W.pax);
+    if (W.pax) followPassengers(W.pax, t);
     const dark = fx.blackout > 0 ? 0.07 : 1;
     W.lights.forEach((L) => { if (dark < 1) L.l.intensity = L.base * dark; else if (L.l.intensity < L.base * 0.2) L.l.intensity = L.base; });
     const sk = fx.smoke > 0 ? Math.min(1, fx.smoke / 6) : 0, su = W.smoke.userData;
@@ -399,15 +459,19 @@
 
     // ---- the cabin scene: effects and people in 3D
     let W = null, attG = null, remG = null;
+    const attM = {}, remM = {};   // Meshy crew models with a walk cycle, when they are there
     const att = { x: 0, z: 1.1, yaw: Math.PI, dir: 1, wait: 2, mode: 'patrol', moving: false, tackle: false, target: null, seenFor: 0 };
     const rem = { x: 0, z: 9.8, yaw: 0, moving: false, tackle: false, seen: false };
     hookScene(cabin, canvas, (scene) => {
       W = makeWorldFx(scene);
       attG = makePerson(LOOKS.attendant); scene.add(attG);                                   // the AI attendant, always on board
-      if (remoteAtt) { remG = makePerson(LOOKS.attendant2); remG.visible = false; scene.add(remG); }   // the player attendant (4 players): a male steward in a suit and tie
+      ensurePeople(() => meshyCrew(scene, 'crew_att', 1.68, attM));
+      if (remoteAtt) { remG = makePerson(LOOKS.attendant2); remG.visible = false; scene.add(remG); ensurePeople(() => meshyCrew(scene, 'crew_stw', 1.78, remM)); }   // the player attendant (4 players): a male steward in a suit and tie
     }, () => {
-      if (attG) { attG.position.set(att.x, 0, att.z); attG.rotation.y = att.yaw; }
-      if (remG) { remG.visible = rem.seen; remG.position.set(rem.x, 0, rem.z); remG.rotation.y = rem.yaw; }
+      if (attG) { attG.position.set(att.x, 0, att.z); attG.rotation.y = att.yaw; attG.visible = !attM.model; }
+      if (attM.model) { attM.model.position.set(att.x, 0, att.z); attM.model.rotation.y = att.yaw; }
+      if (remG) { remG.visible = rem.seen && !remM.model; remG.position.set(rem.x, 0, rem.z); remG.rotation.y = rem.yaw; }
+      if (remM.model) { remM.model.visible = rem.seen; remM.model.position.set(rem.x, 0, rem.z); remM.model.rotation.y = rem.yaw; }
       updateWorldFx(W, S.fx, performance.now() / 1000);
     });
 
@@ -584,6 +648,12 @@
       if (remoteAtt) remoteStep(dt);
       if (attG) animPerson(attG, dt, { moving: att.moving, tackle: att.tackle });
       if (remG) animPerson(remG, dt, { moving: rem.moving, tackle: rem.tackle });
+      // walk cycle while moving; standing still she holds an upright frame of the cycle instead of the first one
+      [[attM, att.moving, att.mode === 'chase' ? 1.8 : 1], [remM, rem.moving, 1]].forEach(([h, mv, k]) => {
+        if (!h.mixer) return;
+        if (mv) h.mixer.update(dt * k);
+        else if (h.action) { const d = h.action.getClip().duration; h.action.time = d * 0.25; h.mixer.update(0); }
+      });
       $('ixSusB').style.width = S.suspicion + '%'; hudSus.classList.toggle('hot', S.suspicion > 65);
       const remNear = rem.seen && Math.hypot(P.x - rem.x, P.z - rem.z) < 2.5;
       warn.style.boxShadow = 'inset 0 0 140px rgba(255,40,30,' + (att.mode === 'chase' ? 0.55 : S.suspicion > 65 || remNear ? 0.25 : 0) + ')';
