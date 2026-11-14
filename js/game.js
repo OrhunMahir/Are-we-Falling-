@@ -12,6 +12,10 @@
     stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
   }
   window.addEventListener('resize', fit); fit();
+  // going in and out of fullscreen: some browsers report the new size late, so measure again after the change has settled
+  ['fullscreenchange', 'webkitfullscreenchange'].forEach((ev) => document.addEventListener(ev, () => {
+    [0, 250, 800].forEach((ms) => setTimeout(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) { fit(); } }, ms));
+  }));
 
   function show(id) {
     document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('show', el.id === id));
@@ -67,11 +71,19 @@
   }
   $('btnMute').onclick = () => { A.init(); A.setMuted(!A.isMuted()); setMuteLabels(); };
   $('btnMute2').onclick = () => { A.setMuted(!A.isMuted()); setMuteLabels(); };
-  $('btnFull').onclick = () => {
-    const d = document;
-    if (!d.fullscreenElement) (d.documentElement.requestFullscreen || function () {}).call(d.documentElement);
-    else d.exitFullscreen();
-  };
+  // fullscreen: the title button, the round button in the cockpit corner, the lobby and tower buttons and the P key. The pages in the frame call it too.
+  function toggleFull() {
+    const d = document, el = d.documentElement;
+    try {
+      if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+      else { const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el); if (p && p.catch) p.catch(() => {}); }
+    } catch (e) {}
+  }
+  window.__awfFull = toggleFull;
+  ['btnFull', 'btnFull2'].forEach((id) => { $(id).onclick = (e) => { toggleFull(); e.currentTarget.blur(); }; });   // blur: SPACE must not press the button again
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyP' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '')) toggleFull();
+  });
   $('btnFly').onclick = () => startFlight();
   $('btnAgain').onclick = () => startFlight();
   $('btnSwap').onclick = () => startFlight();

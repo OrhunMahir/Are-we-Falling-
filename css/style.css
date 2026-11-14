@@ -87,7 +87,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; border: 0; paddi
 .master { font-family: var(--mono); font-weight: 700; font-size: 10px; line-height: 1.05; text-align: center; padding: 4px 10px; border-radius: 4px; background: #2a0d0b; color: #6b2b27; border: 1px solid #45201d; }
 .master.on { background: var(--red); color: #fff; border-color: #ff9a94; animation: blink .7s steps(2) infinite; box-shadow: 0 0 18px rgba(255,59,48,.9); }
 .btn-mini { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #3a4352; color: var(--dim); font-size: 14px; }
-.btn-mini:hover { color: #fff; } .btn-mini.off { text-decoration: line-through; opacity: .5; }
+.btn-mini:hover { color: #fff; } .btn-mini svg, .net-fs svg { display: block; margin: auto; pointer-events: none; } .btn-mini.off { text-decoration: line-through; opacity: .5; }
 
 #panel { position: absolute; left: 0; top: 280px; width: 1280px; height: 440px; padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-content: center;
   background: repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 2px, transparent 2px 4px), linear-gradient(#15181d, #0c0e11); }

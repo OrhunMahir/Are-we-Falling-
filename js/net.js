@@ -29,7 +29,7 @@
   const root = document.createElement('div'); root.id = 'net';
   root.innerHTML =
     '<div class="net-browse net-card">' +
-      '<div class="net-head"><b>ARE WE <i>FALLING?</i></b><span>ONLINE LOBBIES</span><button class="net-x" id="netClose" title="Back to the title">✕</button></div>' +
+      '<div class="net-head"><b>ARE WE <i>FALLING?</i></b><span>ONLINE LOBBIES</span><button class="net-x net-fs" title="Fullscreen (P)"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></button><button class="net-x" id="netClose" title="Back to the title">✕</button></div>' +
       '<p class="net-lead">Two to four players, each on their own computer. One flies, one reads the handbook in the tower. Two more can ride in the cabin: an intruder who wants the aircraft down and a flight attendant who keeps it up. Voice chat is built in.</p>' +
       '<label class="net-l">YOUR CALLSIGN</label><input id="netName" maxlength="14" autocomplete="off" spellcheck="false" placeholder="CAPTAIN">' +
       '<div class="net-row"><button id="netCreate" class="net-btn pri">CREATE A PRIVATE LOBBY</button>' +
@@ -39,7 +39,7 @@
       '<div id="netStatus" class="net-status"></div>' +
     '</div>' +
     '<div class="net-room net-card">' +
-      '<div class="net-head"><b>LOBBY <i id="netRoomCode"></i></b><span id="netRoomHint"></span><button class="net-x" id="netLeave" title="Leave the lobby">✕</button></div>' +
+      '<div class="net-head"><b>LOBBY <i id="netRoomCode"></i></b><span id="netRoomHint"></span><button class="net-x net-fs" title="Fullscreen (P)"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></button><button class="net-x" id="netLeave" title="Leave the lobby">✕</button></div>' +
       '<div class="net-cols"><div>' +
         '<label class="net-l">CREW</label><div id="netMembers" class="net-members"></div>' +
         '<label class="net-l">YOUR SEAT</label><div class="net-row"><button id="netPilot" class="net-btn seat">PILOT<small>flies the cockpit</small></button><button id="netTower" class="net-btn seat">TOWER<small>reads the handbook</small></button></div>' +
@@ -53,7 +53,7 @@
     '</div>' +
     '<div class="net-tower">' +
       '<div class="net-bar"><div class="tb"><label>TIME TO IMPACT</label><b id="twTime">-:--</b></div><div class="tb"><label>STRUCTURE</label><b id="twDmg"></b></div><div class="tb"><label>FIXED</label><b id="twFix">0 / 0</b></div>' +
-      '<div class="tb grow"><label>RADIO</label><b id="twTalk">SILENT</b></div><button id="twPtt" class="net-btn">HOLD TO TALK</button><button id="twMic" class="net-btn"></button><button id="twLeave" class="net-btn">LEAVE</button></div>' +
+      '<div class="tb grow"><label>RADIO</label><b id="twTalk">SILENT</b></div><button id="twPtt" class="net-btn">HOLD TO TALK</button><button id="twMic" class="net-btn"></button><button class="net-btn net-fs" title="Fullscreen (P)">FULLSCREEN</button><button id="twLeave" class="net-btn">LEAVE</button></div>' +
       '<div id="twBanner" class="net-banner"></div><iframe id="twBook" title="Tower emergency handbook"></iframe>' +
     '</div>' +
     '<div id="netToast" class="net-toast"></div>';
@@ -89,6 +89,13 @@
   function peerOpts() {
     const o = { debug: 0 }, p = params.get('peer');
     if (p) { const a = p.split(':'); o.host = a[0]; o.port = parseInt(a[1], 10) || 9000; o.path = '/'; o.secure = false; }
+    // TURN over TCP as well as UDP for networks that are strict. ?relay=1 switches the direct way off, to test the relay below.
+    o.config = params.get('relay') ? { iceServers: [], iceTransportPolicy: 'relay' } : {
+      iceServers: [
+        { urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] },
+        { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478', 'turn:eu-0.turn.peerjs.com:3478?transport=tcp'], username: 'peerjs', credential: 'peerjsp' },
+      ], sdpSemantics: 'unified-plan',
+    };
     return o;
   }
   function openPeer(id) {
@@ -111,11 +118,13 @@
     p.on('connection', onConnection);
     p.on('call', onCall);
     p.on('disconnected', () => { if (N.peer === p && !p.destroyed) { try { p.reconnect(); } catch (e) {} } });
+    try { p.socket.on('message', (m) => { if (N.peer === p && m && m.type === 'CANDIDATE' && m.payload && m.payload.awf) onRelay(String(m.src), m.payload.awf); }); } catch (e) {}
   }
   function dropPeer() {
     Object.keys(N.calls).forEach(closeCall);
     Object.keys(N.conns).forEach((id) => { try { N.conns[id].close(); } catch (e) {} });
     if (N.hostConn) { const c = N.hostConn; N.hostConn = null; try { c.close(); } catch (e) {} }
+    Object.keys(relays).forEach((id) => { delete relays[id]; });
     if (N.peer) { const p = N.peer; N.peer = null; try { p.destroy(); } catch (e) {} }
     N.conns = {}; N.members = []; N.code = null; N.isHost = false; N.inGame = false; N.lastSt = null;
   }
@@ -135,6 +144,50 @@
       c.on('error', (e) => fin(rej, e));
     });
   }
+  /* The relay. Where two browsers cannot reach each other directly (guest Wi-Fi, no UDP), the lobby's messages travel through the lobby service instead.
+     To the rest of this file a relay connection looks like a PeerJS data connection. Voice needs the direct way, so it stays silent on the relay. */
+  const relays = {};
+  function relaySend(dst, body) { try { N.peer.socket.send({ type: 'CANDIDATE', dst, payload: { awf: body } }); } catch (e) {} }
+  function makeRelay(id, meta) {
+    const h = {}, c = {
+      peer: id, metadata: meta || {}, relay: true, open: false,
+      on(ev, f) { (h[ev] = h[ev] || []).push(f); return c; },
+      emit(ev, v) { (h[ev] || []).slice().forEach((f) => { try { f(v); } catch (e) {} }); },
+      send(d) { if (c.open) relaySend(id, { k: 'd', d }); },
+      close() { if (relays[id] === c) delete relays[id]; if (c.open) { c.open = false; relaySend(id, { k: 'bye' }); c.emit('close'); } },
+    };
+    relays[id] = c; return c;
+  }
+  function onRelay(src, m) {
+    if (!m || typeof m !== 'object') return;
+    let c = relays[src];
+    if (m.k === 'hi') {   // somebody asks to come in through the relay
+      if (!N.isHost) { relaySend(src, { k: 'bye' }); return; }
+      if (c && c.open) { relaySend(src, { k: 'ok' }); return; }
+      c = makeRelay(src, m.meta && typeof m.meta === 'object' ? m.meta : {});
+      onConnection(c); c.open = true; relaySend(src, { k: 'ok' }); c.emit('open');
+    } else if (!c) { if (m.k === 'd') relaySend(src, { k: 'bye' }); }   // somebody still talks to a lobby that is gone
+    else if (m.k === 'ok') { if (!c.open) { c.open = true; c.emit('open'); } }
+    else if (m.k === 'd') { if (c.open) c.emit('data', m.d); }
+    else if (m.k === 'bye') { delete relays[src]; if (c.open) { c.open = false; c.emit('close'); } else c.emit('error', new Error('unavailable')); }
+  }
+  function relayConnect(id, meta, ms) {
+    return new Promise((res, rej) => {
+      let done = false; const c = makeRelay(id, meta);
+      const fin = (f, v) => { if (done) return; done = true; clearTimeout(to); delete pending[id]; f(v); };
+      const to = setTimeout(() => { if (relays[id] === c) delete relays[id]; fin(rej, new Error('timeout')); }, ms || 8000);
+      pending[id] = () => { if (relays[id] === c) delete relays[id]; fin(rej, new Error('unavailable')); };
+      c.on('open', () => fin(res, c)); c.on('error', (e) => fin(rej, e));
+      relaySend(id, { k: 'hi', meta });
+    });
+  }
+  /* the direct way first; if the other browser is there but cannot be reached, the relay */
+  function connectAny(id, meta, ms) {
+    return connectTo(id, meta, N.viaRelay ? 2500 : ms).catch((e) => {
+      if (!e || e.message !== 'timeout') throw e;
+      return relayConnect(id, meta, 8000).then((c) => { N.viaRelay = true; return c; });
+    });
+  }
   function fail(e) {
     const t = e && (e.type || e.message);
     N.status = '';
@@ -148,7 +201,7 @@
   // ------------------------------------------------------------------ lobby list
   function probe(name) {
     N.rooms[name] = { s: 'checking' };
-    connectTo(PREFIX + name, { probe: 1 }, 7000).then((c) => {
+    connectAny(PREFIX + name, { probe: 1 }, 7000).then((c) => {
       const to = setTimeout(() => { N.rooms[name] = { s: 'empty' }; try { c.close(); } catch (e) {} render(); }, 4000);
       c.on('data', (d) => { if (d && d.t === 'info') { clearTimeout(to); N.rooms[name] = { s: 'open', n: d.n, inGame: d.inGame, need: d.need }; try { c.close(); } catch (e) {} render(); } });
     }).catch(() => { N.rooms[name] = { s: 'empty' }; render(); });
@@ -176,11 +229,14 @@
     code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!code) { N.error = 'Type the lobby code first.'; render(); return Promise.resolve(); }
     N.error = ''; N.status = 'Joining lobby ' + code + '…'; N.joining = true; render();
-    return ensurePeer().then(() => connectTo(PREFIX + code, { name: myName() }, 10000)).then((c) => {
+    return ensurePeer().then(() => connectAny(PREFIX + code, { name: myName() }, 7000)).then((c) => {
       N.hostConn = c; N.code = code; N.isHost = false; N.joining = false; N.hostSeen = Date.now();
       c.on('data', (d) => onMsg(d, c.peer));
       c.on('close', () => { if (N.hostConn === c) hostGone(); });
       c.send({ t: 'hello', name: myName(), mic: micLive() });
+      if (c.relay) toast('This network blocks the direct connection, so the lobby runs through the relay. Voice chat may stay silent.', 8000);
+      // connected, but the lobby never showed up: say so instead of waiting forever
+      setTimeout(() => { if (N.hostConn === c && N.view === 'browse') { N.hostConn = null; try { c.close(); } catch (e) {} dropPeer(); N.status = ''; N.error = 'The lobby did not answer. Try again.'; render(); } }, 9000);
     }).catch(fail);
   }
   function hostGone(why) {
@@ -210,12 +266,17 @@
     if (!N.isHost) { c.on('open', () => { try { c.close(); } catch (e) {} }); return; }
     if (c.metadata && c.metadata.probe) { c.on('open', () => { c.send(info()); setTimeout(() => { try { c.close(); } catch (e) {} }, 3000); }); return; }
     c.on('data', (d) => onMsg(d, c.peer));
-    c.on('close', () => dropMember(c.peer));
+    c.on('close', () => { if (N.conns[c.peer] === c) dropMember(c.peer); });
     c.on('open', () => {
-      if (N.members.length >= MAX) { c.send({ t: 'full' }); setTimeout(() => { try { c.close(); } catch (e) {} }, 800); return; }
+      const old = N.conns[c.peer];
+      if (old && old !== c && old.relay && !c.relay) { try { c.close(); } catch (e) {} return; }   // this player already came in through the relay
+      if (!old && N.members.length >= MAX) { c.send({ t: 'full' }); setTimeout(() => { try { c.close(); } catch (e) {} }, 800); return; }
       N.conns[c.peer] = c;
-      const role = !N.members.some((m) => m.role === 'tower') ? 'tower' : !N.members.some((m) => m.role === 'pilot') ? 'pilot' : 'tower';
-      N.members.push({ id: c.peer, name: clean(c.metadata && c.metadata.name) || 'CREW', role, mic: false, seen: Date.now() });
+      if (old && old !== c) { try { old.close(); } catch (e) {} }   // the same player again, another way in
+      if (!N.members.some((m) => m.id === c.peer)) {
+        const role = !N.members.some((m) => m.role === 'tower') ? 'tower' : !N.members.some((m) => m.role === 'pilot') ? 'pilot' : 'tower';
+        N.members.push({ id: c.peer, name: clean(c.metadata && c.metadata.name) || 'CREW', role, mic: false, seen: Date.now() });
+      }
       roster();
     });
   }
@@ -549,6 +610,7 @@
 
   // ------------------------------------------------------------------ wiring
   $('netClose').onclick = closeOnline;
+  root.querySelectorAll('.net-fs').forEach((b) => { b.onclick = () => { if (window.__awfFull) window.__awfFull(); b.blur(); }; });
   $('netRefresh').onclick = refresh;
   $('netCreate').onclick = () => host(genCode(), false);
   $('netJoin').onclick = () => join($('netCode').value);
@@ -566,7 +628,7 @@
   const tp = $('twPtt');
   tp.addEventListener('pointerdown', (e) => { e.preventDefault(); setPtt(true); });
   ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => tp.addEventListener(ev, () => setPtt(false)));
-  ['beforeunload', 'pagehide'].forEach((ev) => window.addEventListener(ev, () => { try { if (N.peer) N.peer.destroy(); } catch (e) {} }));
+  ['beforeunload', 'pagehide'].forEach((ev) => window.addEventListener(ev, () => { try { Object.keys(relays).forEach((id) => { if (relays[id].open) relaySend(id, { k: 'bye' }); }); if (N.peer) N.peer.destroy(); } catch (e) {} }));
 
   function open() {
     if (kk() && kk().G) return;

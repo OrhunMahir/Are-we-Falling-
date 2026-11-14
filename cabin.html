@@ -63,6 +63,15 @@
   <label id="dSabL" style="display:none"><select id="dSab"></select></label>
 </div>
 
+<script>
+/* P toggles fullscreen: through the lobby page when this page sits in its frame, on its own otherwise */
+window.addEventListener('keydown', function (e) {
+  if ((e.key !== 'p' && e.key !== 'P') || e.repeat || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '')) return;
+  try { if (window.parent !== window && window.parent.__awfFull) { window.parent.__awfFull(); return; } } catch (x) {}
+  var d = document, el = d.documentElement;
+  try { if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } catch (x) {}
+}, true);
+</script>
 <script src="js/vendor/three.min.js"></script>
 <script src="js/rules.js"></script>
 <script src="js/roles/saboteur.js" onerror="void 0"></script>

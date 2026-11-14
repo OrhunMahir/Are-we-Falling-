@@ -14,11 +14,11 @@
 
   // Every surface is a grid of panel slots. r = reading direction, u = "top of text" direction.
   const SURFACES = [
-    { id: 'main', name: 'MAIN PANEL', tier: 0, cols: 6, rows: 2, c: [0, 0.78, -1.05], r: [1, 0, 0], u: [0, 0.978, -0.208] },
+    { id: 'main', name: 'MAIN PANEL', tier: 0, cols: 6, rows: 2, c: [0, 0.746, -1.043], r: [1, 0, 0], u: [0, 0.978, -0.208] },
     { id: 'ovhd', name: 'OVERHEAD', tier: 0, cols: 3, rows: 4, c: [-0.3, 2.2, -0.62], r: [1, 0, 0], u: [0, 0.643, 0.766] },
     { id: 'ped', name: 'PEDESTAL', tier: 0, cols: 2, rows: 4, c: [0, 0.46, -0.235], r: [1, 0, 0], u: [0, 0.065, -0.998] },
-    { id: 'left', name: 'LEFT CONSOLE', tier: 0, cols: 3, rows: 2, c: [-1.2, 0.8, 0.14], r: [0, 0, -1], u: [-0.423, 0.906, 0] },
-    { id: 'right', name: 'RIGHT CONSOLE', tier: 1, cols: 3, rows: 2, c: [1.2, 0.8, 0.14], r: [0, 0, 1], u: [0.423, 0.906, 0] },
+    { id: 'left', name: 'LEFT CONSOLE', tier: 0, cols: 3, rows: 2, c: [-1.175, 0.8, 0.14], r: [0, 0, -1], u: [-0.423, 0.906, 0] },
+    { id: 'right', name: 'RIGHT CONSOLE', tier: 1, cols: 3, rows: 2, c: [1.175, 0.8, 0.14], r: [0, 0, 1], u: [0.423, 0.906, 0] },
     { id: 'aoh', name: 'AFT OVERHEAD', tier: 1, cols: 3, rows: 2, c: [-0.3, 2.62, 0.2], r: [1, 0, 0], u: [0, 0, 1] },
     { id: 'engr', name: 'ENGINEER STATION', tier: 2, stand: true, cols: 3, rows: 3, c: [1.28, 1.3, 1.75], r: [0, 0, 1], u: [0, 1, 0] },
     { id: 'aftl', name: 'AFT LEFT WALL', tier: 2, stand: true, cols: 3, rows: 3, c: [-1.28, 1.35, 1.75], r: [0, 0, -1], u: [0, 1, 0] },
