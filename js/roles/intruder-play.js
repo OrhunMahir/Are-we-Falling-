@@ -104,7 +104,7 @@
     const hudAct = el('ixAct', 'ix-box');
     const toastEl = el('ixToast', 'ix-box');
     el('ixCross');
-    el('ixHint', 'ix-box', '<b>CLICK</b> grab the mouse · <b>W A S D</b> walk · <b>MOUSE</b> look · <b>E</b> work · <b>Q</b> act natural · <b>F</b> sit, stand · <b>M</b> mute');
+    el('ixHint', 'ix-box', '<b>F</b> stand up · <b>W A S D</b> walk · <b>MOUSE</b> look (click, or drag) · <b>← →</b> turn · <b>E</b> work · <b>Q</b> act natural · <b>M</b> mute');
     const endEl = el('ixEnd', '', '<h1 id="ixEndH"></h1><p id="ixEndP"></p><button id="ixEndB">PLAY AGAIN</button>');
     const $ = (id) => document.getElementById(id);
     $('ixEndB').onclick = () => location.reload();
@@ -158,8 +158,22 @@
       if (down && !e.repeat) onPress(k);
       keys[k] = down;
     };
-    const onPtrCap = (e) => { if (e.target === canvas) { e.stopImmediatePropagation(); e.stopPropagation(); if (e.type === 'pointerdown' && !S.done && document.pointerLockElement !== canvas) { try { canvas.requestPointerLock(); } catch (er) {} } } };
-    const onMouse = (e) => { if (document.pointerLockElement !== canvas || S.done) return; P.yaw -= e.movementX * 0.0024; P.pitch = clamp(P.pitch - e.movementY * 0.0024, -1.35, 1.0); P.hold = 99; };
+    let dragging = false;
+    const onPtrCap = (e) => {
+      if (e.target !== canvas) return;
+      e.stopImmediatePropagation(); e.stopPropagation();
+      if (e.type === 'pointerdown') { dragging = true; if (!S.done && document.pointerLockElement !== canvas) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (er) {} } }
+      if (e.type === 'pointerup') dragging = false;
+    };
+    window.addEventListener('pointerup', () => { dragging = false; });
+    // mouse look: free with pointer lock, and drag-to-look when the browser refuses the lock
+    const onMouse = (e) => {
+      if (S.done) return;
+      const locked = document.pointerLockElement === canvas;
+      if (!locked && !(dragging && (e.buttons & 1))) return;
+      const k = locked ? 0.0024 : 0.005;
+      P.yaw -= (e.movementX || 0) * k; P.pitch = clamp(P.pitch - (e.movementY || 0) * k, -1.35, 1.0); P.hold = 99;
+    };
     window.addEventListener('keydown', onKeyCap, true); window.addEventListener('keyup', onKeyCap, true);
     ['pointerdown', 'pointerup', 'pointermove'].forEach((t) => window.addEventListener(t, onPtrCap, true));
     document.addEventListener('mousemove', onMouse);
@@ -167,6 +181,7 @@
     function onPress(k) {
       if (S.done) return;
       if (k === 'm') { snd.muted = !snd.muted; if (snd.muted) snd.stopAll(); else snd.loop('int_tick', 0.12); toast(snd.muted ? 'SOUND OFF' : 'SOUND ON', 1.2); return; }
+      if ((k === 'w' || k === 's' || k === 'a' || k === 'd' || k === 'arrowup' || k === 'arrowdown') && P.seat) toast('YOU ARE SITTING · PRESS F TO STAND UP', 1.8);
       if (!cur) return;
       const d = cur.def;
       if (k === 'q' && d.input === 'hold') { cur.prog = 0; stopTaskSound(); toast('ACTING NATURAL…', 1.2); return; }
@@ -198,7 +213,7 @@
     }
 
     // ---------------------------------------------------------------- main loop
-    let last = performance.now(), alive = true, raf = 0, stepT = 0;
+    let last = performance.now(), alive = true, raf = 0, stepT = 0, wasSeated = !!P.seat;
     function end(won, why) {
       if (S.done) return; S.done = true; stopTaskSound(); snd.stopAll();
       try { document.exitPointerLock(); } catch (e) {}
@@ -217,8 +232,12 @@
 
       // walking: our own W A S D, the cabin draws the camera from P
       const seated = !!P.seat || (P.path && P.path.length);
+      if (wasSeated && !seated) { P.yaw = P.z > 5 ? 0 : Math.PI; P.pitch = 0; P.hold = 99; }   // just stood up: face along the aisle, not into the seats
+      wasSeated = seated;
+      const turn = (keys.arrowleft ? 1 : 0) - (keys.arrowright ? 1 : 0);                       // arrow keys turn, for when the mouse is not grabbed
+      if (turn) { P.yaw += turn * 2.2 * dt; P.hold = 99; }
       if (!seated) {
-        const f = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0), r = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0);
+        const f = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0), r = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
         if (f || r) {
           const sp = 1.7 * dt, sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
           const dx = (-sy * f + cy * r) * sp, dz = (-cy * f - sy * r) * sp;
