@@ -1,4 +1,4 @@
-// A cabin player loses the line mid-flight: they reconnect by themselves and keep their seat.
+// A cabin player loses the line mid-flight: they reconnect by themselves and keep their seat. Then a second flight: the cabin follows the new seed.
 // Needs: node peer.js (PeerServer on 127.0.0.1:9000) and a static server on ROOT.
 const { chromium } = require('playwright');
 const ROOT = process.env.ROOT || 'http://127.0.0.1:8765';
@@ -43,6 +43,17 @@ async function mk(b, name) {
     await A.evaluate(() => { const w = document.getElementById('twBook').contentWindow; w.eval("window.parent.postMessage({ awf: 1, cab: { k: 'cockpit', in: true } }, '*')"); });
     await H.waitForFunction(() => window.__kk.G.guests && window.__kk.G.guests.attendant, null, { timeout: 30000 });
     log('pilot sees the attendant after the rejoin');
+    // round two: land, fly again, the cabin follows the new flight
+    const seed1 = await H.evaluate(() => window.__kk.G.flight.seed);
+    await H.evaluate(() => window.__kk.land());
+    await H.waitForFunction(() => document.getElementById('btnAgain') && document.getElementById('btnAgain').offsetParent, null, { timeout: 300000 });
+    const endA = await A.waitForFunction(() => { const w = document.getElementById('twBook').contentWindow; const e = w.document.getElementById('axEndH'); return e && e.textContent; }, null, { timeout: 60000 });
+    log('attendant end card', await endA.jsonValue());
+    await H.click('#btnAgain');
+    await H.waitForFunction(() => window.__kk.G && window.__kk.G.phase === 'flight', null, { timeout: 120000 });
+    const seed2 = await H.evaluate(() => window.__kk.G.flight.seed);
+    await A.waitForFunction((s) => { const w = document.getElementById('twBook').contentWindow; return w.__cabin && w.__cabin.seed === s && w.__cabin.play && !w.__cabin.play.state.done; }, seed2, { timeout: 120000 });
+    log('round two: seeds', seed1, '->', seed2, 'cabin follows');
   } catch (e) { pass = false; log('FAIL', e.message.split('\n')[0]); }
   for (const p of [H, T, A]) if (p.errs.length) { pass = false; log('errors', p.errs.slice(0, 3)); }
   log(pass ? 'PASS' : 'FAIL'); await b.close(); process.exit(pass ? 0 : 1);
