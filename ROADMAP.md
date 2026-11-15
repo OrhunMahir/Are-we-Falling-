@@ -94,6 +94,17 @@ Done on the `post-jam-fixes` branch, 14 and 15 November:
 - **No more "Kara Kutu"**: radio voice lines re-recorded without the callsign, flight numbers read AWF.
 - Tests: `tests/net` (lobby), `tests/e2e/four.js` (four seats, the whole cabin flow).
 
+Release check, 15 November (v1.0.1): every flow played again, online and alone. Fixed:
+
+- The cabin seats' end of the flight plays once, at touchdown (7 s into the landing, like the tower and the pilot's landing shot); before, the flight attendant heard the touchdown twice and both cabin seats saw "landed" while the aircraft was still on the approach. On the approach the cabin banner now says CLEARED TO LAND.
+- The intruder's own clock can no longer run out between two flight reports (a dropped or slow line near the end) and play a crash and "YOU WIN" that never happened. Only the pilot's flight ends the flight.
+- The flight attendant grabbing an innocent passenger now makes the pilot's cabin angrier too, as HOW TO PLAY says (before, only her own screen knew).
+- After a flight (and when leaving the lobby) the hidden cabin or handbook page is unloaded, so it stops drawing and its alarms and footsteps stop playing behind the lobby and the title screen.
+- SOUND ON/OFF is remembered on the device, and the volume slider and SOUND button now apply to the cabin seats too.
+- The end screen and the radio lines after a landing or a crash cannot show up over a newer screen.
+- A cabin seat in the cockpit, or holding the cockpit door, says so again every few seconds: a pilot whose line dropped and came back sees the visitor again (before, the visitor stayed invisible until they walked out and in). The tower's toast still shows only changes.
+- QA scripts for this check: `tests/qa/` (solo flights in all three modes solved panel by panel, crash, timeout, abort; tower as host, second flight, public list, full lobby; three-seat cabin flows; the fixes above).
+
 Still open:
 
 1. **Nicer aircraft textures** on the airliner seen from the tower (Efe, Meshy).

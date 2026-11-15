@@ -7,7 +7,7 @@
      play.state       -> { clock, tasks, unrest, fx, carry, done }
      play.trouble(id) -> a sabotage with this id was finished somewhere: the task that undoes it comes onto the list
      play.setFlight({ clock, unrest, intruder })   what the lobby reports
-     play.crash(), play.land(), play.stop()
+     play.crash(), play.land() (at touchdown), play.stop()
 
    What the flight attendant does:
    - undoes the intruder's sabotage: every finished sabotage opens the task that answers it (js/roles/attendant.js);
@@ -324,7 +324,7 @@
       const caughtInAct = best.who === 'int' && (ip.working || performance.now() - ip.workT < 6000 || ip.place === 'cockpit');
       if (caughtInAct) {
         if (opts.link) opts.link.send({ t: 'caught', ok: true });
-        if (opts.onCaught) opts.onCaught(true);
+        if (opts.onCaught) opts.onCaught(true, 'int');
         S.caught = true; ip.seen = false; seatFigure(null); intG.visible = false;
         setTimeout(() => snd.play('att_got', 0.9), 500);
         toast('GOT YOU · THE INTRUDER IS IN HANDCUFFS · +15 SECONDS', 3.5);
@@ -332,7 +332,7 @@
       } else {
         grabCool = 12;
         if (opts.link && best.who === 'int') opts.link.send({ t: 'caught', ok: false });
-        if (opts.onCaught) opts.onCaught(false);
+        if (opts.onCaught) opts.onCaught(false, best.who);
         S.unrest = Math.min(1, S.unrest + 0.15);
         setTimeout(() => snd.play('pax_angry', 0.7), 300);
         toast(best.who === 'int' ? 'NOTHING ON THEM · YOU NEED TO CATCH THEM AT IT' : 'AN INNOCENT PASSENGER · THE CABIN IS UPSET', 3);
@@ -353,8 +353,8 @@
       snd.play('gpws_pullup', 0.9); snd.play('sfx_engine_fail', 0.8); setTimeout(() => snd.play('sfx_pax_scream', 0.9), 700);
       toast('BRACE · BRACE · BRACE', 3);
     }
-    function land() {
-      if (S.done) return;
+    function land() {   // called at touchdown (cabin.html), once
+      if (S.done || S.landed || S.crashT) return; S.landed = true;
       snd.play('sfx_touchdown', 0.8); setTimeout(() => snd.play('sfx_cheer', 0.8), 1200);
       setTimeout(() => endCard(true, 'ON THE GROUND', 'You kept the cabin together' + (S.caught ? ' and put the intruder in handcuffs.' : '.') + ' The passengers are clapping.'), 2500);
     }

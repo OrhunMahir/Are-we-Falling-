@@ -41,7 +41,7 @@
       <div><b>3D PASSENGERS, CREW, PROPS</b>made with Meshy</div>
       <div><b>BUILT WITH</b>three.js, PeerJS, qrcode-generator</div>
       <div><b>THANKS</b>the HACK//OPS organisers, ElevenLabs, Rosebud AI, Meshy</div>
-      <div><b>VERSION</b>1.0</div>
+      <div><b>VERSION</b>1.0.1</div>
     </div>`;
 
   const modal = $('modal'), body = $('modalBody');
