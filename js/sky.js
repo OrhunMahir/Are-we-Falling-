@@ -1,4 +1,4 @@
-/* KARA KUTU — windshield view: storm, clouds, rain, lightning, ground and runway. */
+/* ARE WE FALLING? — windshield view: storm, clouds, rain, lightning, ground and runway. */
 (function () {
   'use strict';
   function Sky(canvas) {

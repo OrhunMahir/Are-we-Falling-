@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ARE WE FALLING?</title>
+<meta name="description" content="A co-op cockpit emergency for two to four players: a pilot in a failing 3D cockpit, a tower with the handbook, an intruder and a flight attendant in the cabin. Keep talking. Land the plane.">
+<meta property="og:title" content="ARE WE FALLING?">
+<meta property="og:description" content="A co-op cockpit emergency for two to four players. Keep talking. Land the plane.">
+<meta name="theme-color" content="#07090d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2307090d'/%3E%3Cpath d='M32 10 L38 30 L56 36 L56 41 L38 38 L36 52 L42 56 L42 59 L32 57 L22 59 L22 56 L28 52 L26 38 L8 41 L8 36 L26 30 Z' fill='%23ffb000' transform='rotate(35 32 32)'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/cockpit3d.css">
 <link rel="stylesheet" href="css/net.css">
@@ -49,9 +54,16 @@
           <button id="btnMute" class="btn-ghost">SOUND: ON</button>
           <button id="btnFull" class="btn-ghost">FULLSCREEN (P)</button>
         </div>
+        <div class="title-opts">
+          <button id="btnHow" class="btn-ghost">HOW TO PLAY</button>
+          <button id="btnCredits" class="btn-ghost">CREDITS</button>
+        </div>
+        <label class="vol"><span>VOLUME</span><input id="volume" type="range" min="0" max="100" value="80"></label>
       </div>
     </div>
-    <div class="credits">Voices, sound effects and music made with ElevenLabs · HACK//OPS Game Jam Munich 2026</div>
+    <div class="credits">Voices, sound effects and music made with ElevenLabs · 3D people and props made with Meshy · v1.0</div>
+    <div id="phoneNote" class="phone-note"><b>THE PILOT NEEDS A COMPUTER</b>The cockpit is played with a mouse on a laptop or desktop. On this phone you can be the <b>TOWER</b>: open the handbook and let the pilot read you the flight code.<a href="manual.html" class="btn-primary">OPEN THE HANDBOOK</a><button id="phoneAnyway" class="btn-ghost">SHOW ME THE GAME ANYWAY</button></div>
+    <div id="modal" class="modal"><div class="modal-card"><button id="modalX" class="modal-x" title="Close (Esc)">✕</button><div id="modalBody"></div></div></div>
   </section>
 
   <!-- ================= COCKPIT ================= -->
@@ -120,6 +132,7 @@
 <script src="js/decoys.js"></script>
 <script src="js/modules3d.js"></script>
 <script src="js/game.js"></script>
+<script src="js/title-extras.js"></script>
 <script src="js/vendor/peerjs.min.js"></script>
 <script src="js/net.js"></script>
 </body>

@@ -1,4 +1,4 @@
-/* KARA KUTU — audio. Voice lines / SFX / music are ElevenLabs MP3s in audio/.
+/* ARE WE FALLING? — audio. Voice lines / SFX / music are ElevenLabs MP3s in audio/.
    Every sound has a procedural fallback, so the game still works if a file is missing. */
 (function () {
   'use strict';
@@ -12,13 +12,13 @@
   let ctx = null, master = null, voiceBus = null, sfxBus = null, musicBus = null;
   const buffers = {};
   const loops = {};
-  let muted = false;
+  let muted = false, vol = 1;
   // Opened straight from disk (file://) browsers refuse fetch(), so play through <audio> tags instead.
   const FILE_MODE = location.protocol === 'file:';
   const elLoops = {};
   function elPlay(name, gain, loopIt) {
     const el = new Audio('audio/' + name + '.mp3');
-    el.volume = Math.max(0, Math.min(1, (gain == null ? 1 : gain) * (muted ? 0 : 0.9)));
+    el.volume = Math.max(0, Math.min(1, (gain == null ? 1 : gain) * (muted ? 0 : 0.9 * vol)));
     el.loop = !!loopIt; el._gain = gain == null ? 1 : gain;
     const p = el.play(); if (p && p.catch) p.catch(() => {});
     return el;
@@ -29,7 +29,7 @@
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
-    master = ctx.createGain(); master.gain.value = 0.9;
+    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9 * vol;
     const comp = ctx.createDynamicsCompressor();
     master.connect(comp); comp.connect(ctx.destination);
     voiceBus = ctx.createGain(); voiceBus.gain.value = 1.0; voiceBus.connect(master);
@@ -96,7 +96,7 @@
   }
   function setLoopGain(name, gain) {
     if (pendingLoops[name]) pendingLoops[name].gain = gain;
-    if (elLoops[name]) { elLoops[name]._gain = gain * 0.7; elLoops[name].volume = Math.max(0, Math.min(1, gain * 0.7 * (muted ? 0 : 0.9))); return; }
+    if (elLoops[name]) { elLoops[name]._gain = gain * 0.7; elLoops[name].volume = Math.max(0, Math.min(1, gain * 0.7 * (muted ? 0 : 0.9 * vol))); return; }
     const l = loops[name]; if (!l) return;
     l.g.gain.cancelScheduledValues(ctx.currentTime);
     l.g.gain.linearRampToValueAtTime(gain, ctx.currentTime + 0.6);
@@ -203,13 +203,18 @@
     try { d.src.stop(ctx.currentTime + 0.5); d.o.stop(ctx.currentTime + 0.5); } catch (e) {}
   }
 
+  function setVolume(v) {
+    vol = Math.max(0, Math.min(1, +v || 0));
+    if (master) master.gain.value = muted ? 0 : 0.9 * vol;
+    Object.keys(elLoops).forEach((n) => { elLoops[n].volume = muted ? 0 : Math.max(0, Math.min(1, elLoops[n]._gain * 0.9 * vol)); });
+  }
   function setMuted(m) {
-    muted = m; if (master) master.gain.value = m ? 0 : 0.9;
-    Object.keys(elLoops).forEach((n) => { elLoops[n].volume = m ? 0 : Math.max(0, Math.min(1, elLoops[n]._gain * 0.9)); });
+    muted = m; if (master) master.gain.value = m ? 0 : 0.9 * vol;
+    Object.keys(elLoops).forEach((n) => { elLoops[n].volume = m ? 0 : Math.max(0, Math.min(1, elLoops[n]._gain * 0.9 * vol)); });
   }
 
   window.KKAudio = {
     init, play, loop, stopLoop, setLoopGain, stopAllLoops, has, sfx, morseTone, startDrone, stopDrone,
-    setMuted, isMuted: () => muted, ready: () => !!ctx,
+    setMuted, setVolume, getVolume: () => vol, isMuted: () => muted, ready: () => !!ctx,
   };
 })();

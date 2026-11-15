@@ -138,6 +138,7 @@ window.addEventListener('keydown', function (e) {
     return {
       send(m) {
         if (!m || !m.t) return;
+        window.__linkTx = (window.__linkTx || 0) + 1;   // for the tests
         if (m.t === 'pose') { const now = performance.now(); if (now - poseT < 140) return; poseT = now; }   // seven a second is plenty
         up({ k: 'link', m });
       },

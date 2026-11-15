@@ -1,4 +1,4 @@
-/* KARA KUTU — the seven failure modules as 3D cockpit panels. Layout is in panel
+/* ARE WE FALLING? — the seven failure modules as 3D cockpit panels. Layout is in panel
    millimetres (420 x 300). All answers are checked against rules.js. */
 (function () {
   'use strict';

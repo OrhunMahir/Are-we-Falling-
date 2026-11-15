@@ -315,7 +315,7 @@
     function frame(now) {
       if (!alive) return;
       raf = requestAnimationFrame(frame);
-      const dt = Math.min(0.08, (now - last) / 1000); last = now; S.t += dt;
+      const dt = Math.max(0, Math.min(0.08, (now - last) / 1000)); last = now; S.t += dt;
       const w = canvas.clientWidth, h = canvas.clientHeight;
       if (w && h && (canvas.width !== Math.round(w * renderer.getPixelRatio()) || canvas.height !== Math.round(h * renderer.getPixelRatio()))) { renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
       // gentle head movement following the mouse

@@ -4,6 +4,7 @@
   'use strict';
   const KK = window.KK;
   const PREFIX = 'awf1-', MAX = 4;
+  const RID = Math.random().toString(36).slice(2, 10);   // this page, across reconnects: a player who drops out mid-flight gets the same seat back
   // two seats are needed (pilot, tower); the two cabin seats are optional and play in cabin.html
   const SEATS = ['pilot', 'tower', 'saboteur', 'attendant'], CAB_SEAT = { saboteur: 1, attendant: 1 }, SEAT_NAME = { pilot: 'PILOT', tower: 'TOWER', saboteur: 'INTRUDER', attendant: 'ATTENDANT' };
   const ROOMS = ['ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT', 'GOLF', 'HOTEL'];
@@ -342,7 +343,7 @@
         if (f !== flow) throw new Error('stale');
         echo();
         say(n ? 'no answer yet, trying again…' : 'calling the host…');
-        return connectAny(id, { name: myName() }, n ? 3000 : 6000, () => say('no direct connection on this network, trying the relay…'));
+        return connectAny(id, { name: myName(), rid: RID }, n ? 3000 : 6000, () => say('no direct connection on this network, trying the relay…'));
       }).catch((e) => {
         // One more try where it can help: the line to the lobby service was shaky a moment ago, or nothing at all came back, not even our own echo (a dead line does not say that it is dead).
         const t = e && (e.type || e.message), shaky = Date.now() - N.dropAt < 120000, deaf = N.rx < t0;
@@ -368,10 +369,27 @@
   }
   function hostGone(why) {
     N.dbg.push('hostGone ' + (why || 'close') + ' ' + (Date.now() - (N.hostSeen || 0)));
-    const flying = N.view === 'fly';
+    const flying = N.view === 'fly', code = N.code, played = N.played, seat = myRole();
+    const back = N.inGame && code && N.view === 'tower' && seat && seat !== 'pilot' && (N.rejoins || 0) < 5;
     N.hostConn = null; dropPeer();
+    if (back) {   // a cabin seat or the tower lost the line mid-flight: keep the screen as it is and call the lobby again
+      N.rejoins = (N.rejoins || 0) + 1; N.played = played;
+      toast('Lobby connection lost. Reconnecting…', 5000);
+      rejoin(code, played, 0);
+      return;
+    }
     toast(flying ? 'Lobby connection lost. Keep flying.' : 'The lobby was closed.', 6000);
     if (!flying) { showView('browse'); refresh(); } else { document.body.classList.remove('net-online'); syncEnd(); render(); }
+  }
+  function rejoin(code, played, n) {
+    setTimeout(() => {
+      if (N.code || N.view !== 'tower') return;   // somebody pressed something meanwhile
+      join(code).then(() => {
+        if (N.hostConn) { N.played = N.played || played; toast('Back in the lobby.', 3000); return; }
+        if (n < 3 && N.view === 'tower') rejoin(code, played, n + 1);
+        else toast('Could not get back into the lobby. Leave and join again.', 8000);
+      });
+    }, 1500 + n * 2500);
   }
   function leave() {
     if (N.view === 'fly') return;
@@ -403,8 +421,11 @@
       N.conns[c.peer] = c;
       if (old && old !== c) { try { old.close(); } catch (e) {} }   // the same player again, another way in
       if (!N.members.some((m) => m.id === c.peer)) {
-        const role = !N.members.some((m) => m.role === 'tower') ? 'tower' : !N.members.some((m) => m.role === 'pilot') ? 'pilot' : 'tower';
-        N.members.push({ id: c.peer, name: clean(c.metadata && c.metadata.name) || 'CREW', role, mic: false, seen: Date.now() });
+        const rid = String((c.metadata && c.metadata.rid) || '').slice(0, 12), back = N.inGame && rid && N.left && N.left[rid];
+        let role = !N.members.some((m) => m.role === 'tower') ? 'tower' : !N.members.some((m) => m.role === 'pilot') ? 'pilot' : 'tower';
+        if (back && back !== 'pilot' && !N.members.some((m) => m.role === back)) role = back;   // back after a dropped line: the same seat, the flight goes on
+        if (back) delete N.left[rid];
+        N.members.push({ id: c.peer, name: clean(c.metadata && c.metadata.name) || 'CREW', role, mic: false, seen: Date.now(), rid });
       }
       roster();
     });
@@ -416,7 +437,8 @@
     const m = N.members.find((x) => x.id === id);
     N.members = N.members.filter((x) => x.id !== id);
     closeCall(id);
-    if (m) toast(m.name + ' left the lobby.');
+    if (m && N.inGame && m.rid) (N.left = N.left || {})[m.rid] = m.role;
+    if (m) toast(m.name + (N.inGame && m.role !== 'pilot' ? ' lost the connection.' : ' left the lobby.'));
     if (m && m.role === 'pilot' && N.inGame) { const d = { t: 'st', ph: 'lobby' }; cast(d); onState(d); }
     roster();
   }
@@ -481,7 +503,7 @@
     if (g) N.played = g;
     N.grace = Date.now() + 60000;
     if (KK.MODES[mode]) N.mode = mode;
-    N.inGame = true; N.lastSt = null;
+    N.inGame = true; N.lastSt = null; N.rejoins = 0;
     if (myRole() === 'pilot') { showView('fly'); kk().settings.mode = N.mode; kk().startFlight(); N.flying = true; }
     else showView('tower');
   }
@@ -547,7 +569,7 @@
   }, 500);
   // heartbeat: a closed tab or a dead connection is noticed within about ten seconds
   let lastTick = Date.now(), beat = 0;
-  const patience = (c) => (c && c.relay ? 45000 : 20000);   // the relay loses messages whenever the lobby service hiccups: more patience there
+  const patience = (c) => (c && c.relay ? 45000 : N.inGame ? 30000 : 20000);   // mid-flight a busy machine (a cabin loading its models) gets longer before it counts as gone   // the relay loses messages whenever the lobby service hiccups: more patience there
   setInterval(() => {
     const now = Date.now(), froze = now - lastTick > 6000; lastTick = now;
     if (!N.code) return;

@@ -1,4 +1,4 @@
-/* KARA KUTU — everything in the cockpit that is NOT part of a failure: dozens of
+/* ARE WE FALLING? — everything in the cockpit that is NOT part of a failure: dozens of
    working-but-irrelevant panels, plus the fixed screens and the aircraft data placard. */
 (function () {
   'use strict';
@@ -146,7 +146,7 @@
   function fixed(kind, P, flight, K3) {
     const a = flight.aircraft;
     if (kind === 'data') {
-      [['FLIGHT', 'KK ' + a.flight, 54], ['REGISTRATION', a.reg, 126], ['SOULS ON BOARD', String(a.souls), 198]].forEach(([l, v, y]) => {
+      [['FLIGHT', 'AWF ' + a.flight, 54], ['REGISTRATION', a.reg, 126], ['SOULS ON BOARD', String(a.souls), 198]].forEach(([l, v, y]) => {
         P.text(34, y, l, { size: 8.5, color: '#9aa3ad', align: 'left' });
         P.glass(30, y + 10, 220, 44); const c = P.ctx; c.font = 'bold 30px "Courier New", monospace'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = '#f3f6f9'; c.fillText(v, 42, y + 33);
       });

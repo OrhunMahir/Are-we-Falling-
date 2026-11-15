@@ -621,7 +621,7 @@
     }
     function frame(now) {
       if (!alive) return; raf = requestAnimationFrame(frame);
-      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));   // max 0: a frame stamped before the layer started (a long model parse) must not run time backwards last = now;
       if (S.done) return;
       const walking = ctl.update(dt, S.door);
       const k = ctl.keys;
@@ -678,8 +678,8 @@
       $('ixWhere').textContent = P.seat ? 'SEAT ' + P.seat.id : NAMES[P.place] || '';
 
       // send our pose to the other screens
-      poseT -= dt;
-      if (opts.link && poseT <= 0) { poseT = 0.1; opts.link.send({ t: 'pose', who: 'int', x: +P.x.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), seat: P.seat ? P.seat.id : null, place: P.place, moving: walking, working }); }
+      // real time, not game time: a slow machine still tells the others where we are
+      if (opts.link && now - poseT >= 100) { poseT = now; opts.link.send({ t: 'pose', who: 'int', x: +P.x.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), seat: P.seat ? P.seat.id : null, place: P.place, moving: walking, working }); }
 
       // effects run down
       Object.keys(S.fx).forEach((n) => { S.fx[n] = Math.max(0, S.fx[n] - dt); });

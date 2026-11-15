@@ -243,7 +243,7 @@
     function frame(now) {
       if (!alive) return;
       raf = requestAnimationFrame(frame);
-      const dt = Math.min(0.05, (now - last) / 1000); last = now; S.t += dt;
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; S.t += dt;
       const w = canvas.clientWidth || 1280, h = canvas.clientHeight || 720;
       if (w !== lw || h !== lh) { lw = w; lh = h; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 

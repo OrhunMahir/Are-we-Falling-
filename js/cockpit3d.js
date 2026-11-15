@@ -1,4 +1,4 @@
-/* KARA KUTU — 3D cockpit: scene, first-person head look, panel toolkit with instanced
+/* ARE WE FALLING? — 3D cockpit: scene, first-person head look, panel toolkit with instanced
    controls, pilot hands, storm outside. Game rules live in rules.js / modules3d.js. */
 (function () {
   'use strict';

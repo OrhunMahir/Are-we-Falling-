@@ -363,7 +363,7 @@
     let last = performance.now(), alive = true, raf = 0, poseT = 0;
     function frame(now) {
       if (!alive) return; raf = requestAnimationFrame(frame);
-      const dtw = Math.min(0.25, (now - last) / 1000), dt = Math.min(0.1, dtw); last = now;   // dtw: timers and task progress keep real time on a slow machine
+      const dtw = Math.max(0, Math.min(0.25, (now - last) / 1000)), dt = Math.min(0.1, dtw); last = now;   // dtw: timers and task progress keep real time on a slow machine
       if (S.done) return;
       const walking = walk(dt);
       // through the cockpit door
@@ -431,14 +431,14 @@
       if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastEl.classList.remove('show'); }
 
       // where we are, for the intruder's screen
-      poseT -= dt;
-      if (opts.link && poseT <= 0) { poseT = 0.15; opts.link.send({ t: 'pose', who: 'att', x: +P.x.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), seat: P.seat ? P.seat.id : null, place: P.place, moving: walking, tackle: grabCool > 2 }); }
+      if (opts.link && now - poseT >= 150) { poseT = now; opts.link.send({ t: 'pose', who: 'att', x: +P.x.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), seat: P.seat ? P.seat.id : null, place: P.place, moving: walking, tackle: grabCool > 2 }); }
     }
     raf = requestAnimationFrame(frame);
     paint();
     setTimeout(() => toast(S.intruder ? 'CABIN CREW · SOMEBODY ON BOARD IS NOT WHAT THEY SEEM' : 'CABIN CREW · KEEP THE PASSENGERS CALM', 3), 600);
 
     return {
+      _ip: ip,
       state: S, trouble, crash, land, walkable, placeAt,
       setFlight(f) {
         if (!f) return;

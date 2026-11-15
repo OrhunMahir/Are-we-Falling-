@@ -273,3 +273,28 @@ label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.5px; color
 @keyframes introPulse { 50% { background: rgba(120,0,0,.72); } }
 @keyframes crashFlash { 0% { background: #fff; } 12% { background: #ff6a00; } 40% { background: #1a0500; } 100% { background: #000; } }
 @keyframes fadeIn { to { opacity: 1; } }
+
+/* ---------- title: volume, how to play, credits, phone note ---------- */
+.vol { display: flex; align-items: center; justify-content: center; gap: 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: var(--dim); }
+.vol input { width: 150px; accent-color: #ffb000; }
+.modal { position: absolute; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; background: rgba(3,5,8,.82); }
+.modal.show { display: flex; }
+.modal-card { position: relative; width: 980px; max-height: 620px; overflow: auto; background: #0d1117; border: 1px solid #39414e; border-radius: 10px; padding: 26px 32px; color: #d6dde8; box-shadow: 0 30px 80px rgba(0,0,0,.7); }
+.modal-x { position: absolute; right: 14px; top: 12px; background: none; border: 1px solid #3a4352; color: #8491a3; border-radius: 6px; font-size: 14px; padding: 4px 9px; cursor: pointer; }
+.modal-x:hover { color: #fff; }
+.modal h2 { margin: 0 0 4px; font-size: 30px; letter-spacing: 3px; color: #ffb000; }
+.modal .lead { margin: 0 0 18px; color: #8491a3; font-size: 15px; }
+.modal .roles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.modal .role { background: #121821; border: 1px solid #2a313c; border-radius: 8px; padding: 12px 14px; }
+.modal .role h3 { margin: 0 0 2px; font-size: 18px; letter-spacing: 2px; }
+.modal .role small { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: #ffb000; margin-bottom: 8px; }
+.modal .role p { margin: 0 0 8px; font-size: 13.5px; line-height: 1.35; color: #b8c2d0; }
+.modal .role kbd, .modal .keys kbd { font-family: var(--mono); font-size: 11px; background: #232b36; border: 1px solid #3a4352; border-radius: 3px; padding: 0 5px; color: #e8edf2; }
+.modal .keys { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 26px; font-size: 13.5px; color: #b8c2d0; }
+.modal .tip { margin-top: 16px; padding: 10px 14px; border-left: 3px solid #ffb000; background: #141a22; font-size: 14px; color: #c9d2de; }
+.modal .cred { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 40px; font-size: 15px; }
+.modal .cred b { display: block; font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: #8491a3; font-weight: 400; margin-top: 10px; }
+.phone-note { position: absolute; inset: 0; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 80px; background: rgba(5,7,10,.94); text-align: center; font-size: 34px; line-height: 1.35; color: #c9d2de; }
+.phone-note > b:first-child { display: block; font-size: 52px; letter-spacing: 3px; color: #ffb000; }
+.phone-note a, .phone-note button { font-size: 30px; padding: 20px 34px; }
+.phone-note.show { display: flex; }

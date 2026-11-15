@@ -1,4 +1,4 @@
-/* KARA KUTU — shared rules. Used by BOTH the cockpit (to check answers) and the
+/* ARE WE FALLING? — shared rules. Used by BOTH the cockpit (to check answers) and the
    tower handbook (to print the rules), so the two can never disagree. */
 (function (root) {
   'use strict';

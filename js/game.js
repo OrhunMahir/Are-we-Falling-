@@ -1,4 +1,4 @@
-/* KARA KUTU — cockpit game loop. */
+/* ARE WE FALLING? — cockpit game loop. */
 (function () {
   'use strict';
   const KK = window.KK, A = window.KKAudio;
@@ -468,7 +468,7 @@
     show('end');
     $('end').classList.remove('won', 'lost'); $('end').classList.add(won ? 'won' : 'lost');
     A.stopAllLoops(1.5);
-    $('endEyebrow').textContent = won ? 'FLIGHT KK ' + a.flight + ' · ' + a.reg : 'FLIGHT KK ' + a.flight + ' · ' + a.reg + ' · RECORDER RECOVERED';
+    $('endEyebrow').textContent = won ? 'FLIGHT AWF ' + a.flight + ' · ' + a.reg : 'FLIGHT AWF ' + a.flight + ' · ' + a.reg + ' · RECORDER RECOVERED';
     $('endTitle').textContent = won ? 'ON THE GROUND' : 'WE WERE FALLING';
     $('endSub').innerHTML = won
       ? '<b>' + a.souls + ' souls</b> walked away. The tower is buying the drinks.'
@@ -498,7 +498,7 @@
   // ---------- main loop ----------
   let last = performance.now();
   function frame(now) {
-    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    const dt = Math.max(0, Math.min(0.1, (now - last) / 1000)); last = now;
     if (document.body.classList.contains('net-cover')) { /* the online lobby covers the stage: nothing to draw */ }
     else if ($('title').classList.contains('show')) {
       titleSky.state.rollTarget = Math.sin(now / 4000) * 0.08;
