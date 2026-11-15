@@ -1,7 +1,7 @@
 'use strict';
 // patch4 scenarios in the plain-Node harness (real net.js + real PeerJS client, fake RTCPeerConnection that never opens, controllable WebSocket, real PeerServer)
 const { startServer, makeBrowser, sleep, ts } = require('./harness.js');
-const RealWS = require('/tmp/claude-0/-home-user/a7084b7f-7c98-5dca-8588-0245675a10ff/scratchpad/nettest/node_modules/ws');
+const RealWS = require(require('path').join(process.env.NM || require('path').join(__dirname, '..', '..', 'node_modules'), 'ws'));
 const PORT = +process.env.PORT || 9161;
 const say = (s) => console.log('\n' + ts(), '=====', s);
 const res = [];

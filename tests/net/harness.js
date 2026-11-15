@@ -3,8 +3,8 @@
    against a local PeerServer on 127.0.0.1. No browser involved. */
 'use strict';
 const vm = require('vm'), fs = require('fs'), path = require('path');
-const BASE = '/tmp/claude-0/-home-user/a7084b7f-7c98-5dca-8588-0245675a10ff/scratchpad/wf/base';
-const NM = '/tmp/claude-0/-home-user/a7084b7f-7c98-5dca-8588-0245675a10ff/scratchpad/nettest/node_modules';
+const BASE = process.env.BASE || path.join(__dirname, '..', '..');
+const NM = process.env.NM || path.join(BASE, 'node_modules');   // npm i ws peer (or NM=/path/to/node_modules)
 const RealWS = require(path.join(NM, 'ws'));
 const { PeerServer } = require(path.join(NM, 'peer'));
 const PEERJS = fs.readFileSync(path.join(BASE, 'js/vendor/peerjs.min.js'), 'utf8');
