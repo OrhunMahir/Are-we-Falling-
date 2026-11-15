@@ -76,9 +76,10 @@
   // ---------------------------------------------------------------- phones: the pilot needs a mouse, the tower does not
   const note = $('phoneNote');
   if (note) {
+    document.body.appendChild(note);   // out of the scaled 1280x720 stage: on a phone it must fill the real screen
     let seen = false;
     try { seen = sessionStorage.getItem('awf_phone') === '1'; } catch (e) {}
-    const phone = window.matchMedia && matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 600;
+    const phone = window.matchMedia && matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 600;
     if (phone && !seen && !/[?&](embed|seat)=/.test(location.search)) note.classList.add('show');
     $('phoneAnyway').onclick = () => { note.classList.remove('show'); try { sessionStorage.setItem('awf_phone', '1'); } catch (e) {} };
   }

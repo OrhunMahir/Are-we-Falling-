@@ -294,9 +294,11 @@ label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.5px; color
 .modal .tip { margin-top: 16px; padding: 10px 14px; border-left: 3px solid #ffb000; background: #141a22; font-size: 14px; color: #c9d2de; }
 .modal .cred { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 40px; font-size: 15px; }
 .modal .cred b { display: block; font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: #8491a3; font-weight: 400; margin-top: 10px; }
-.phone-note { position: absolute; inset: 0; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 80px; background: rgba(5,7,10,.94); text-align: center; font-size: 34px; line-height: 1.35; color: #c9d2de; }
-.phone-note > b:first-child { display: block; font-size: 52px; letter-spacing: 3px; color: #ffb000; }
-.phone-note a, .phone-note button { font-size: 30px; padding: 20px 34px; }
+.phone-note { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; background: #05070a; text-align: center; font-size: 17px; line-height: 1.45; color: #c9d2de; font-family: var(--sans, system-ui, sans-serif); }
+.phone-note .pn { width: min(90vw, 480px); display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.phone-note p { margin: 0; }
+.phone-note .pn-h { display: block; font-size: 24px; letter-spacing: 2px; color: #ffb000; }
+.phone-note a, .phone-note button { font-size: 15px; padding: 14px 22px; max-width: 100%; }
 .phone-note.show { display: flex; }
 
 /* what a cabin sabotage does to the cockpit (js/game.js cabinFx) */
