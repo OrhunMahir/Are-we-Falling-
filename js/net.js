@@ -74,11 +74,12 @@
     root.className = v === 'off' || v === 'fly' ? '' : 'show v-' + v + (cab ? ' cab' : '');
     document.body.classList.toggle('net-online', !!N.code);
     document.body.classList.toggle('net-cover', v !== 'off' && v !== 'fly');
+    const f = $('twBook');
     if (v === 'tower') {   // the tower reads the handbook, the cabin seats get the cabin
-      const f = $('twBook'), want = cab ? 'cabin.html?embed=1&role=' + myRole() : 'manual.html';
+      const want = cab ? 'cabin.html?embed=1&role=' + myRole() : 'manual.html';
       if (f.getAttribute('src') !== want) f.setAttribute('src', want);
       if (kk().music) kk().music(false);
-    }
+    } else if (f.getAttribute('src') && f.getAttribute('src') !== 'about:blank') f.setAttribute('src', 'about:blank');   // out of the flight: a hidden cabin or tower page would keep drawing and playing its sounds
     syncEnd(); render();
   }
   let toastT = null;
@@ -503,7 +504,7 @@
     if (g) N.played = g;
     N.grace = Date.now() + 60000;
     if (KK.MODES[mode]) N.mode = mode;
-    N.inGame = true; N.lastSt = null; N.rejoins = 0;
+    N.inGame = true; N.lastSt = null; N.rejoins = 0; N.sabIn = false;
     if (myRole() === 'pilot') { showView('fly'); kk().settings.mode = N.mode; kk().startFlight(); N.flying = true; }
     else showView('tower');
   }
@@ -518,7 +519,7 @@
       else if (tower) toast((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + title + (eff ? ' · ' + (eff > 0 ? '+' : '') + eff + ' SECONDS' : ''), 5000);
     } else if (d.k === 'cockpit') {   // a cabin seat walked through the cockpit door, or left again: the pilot sees who stands behind them
       if (pilot) { if (kk() && kk().cabinCockpit) kk().cabinCockpit(!!d.in, d.role); }
-      else if (tower && sab) toast(d.in ? 'SOMEONE IS IN THE COCKPIT' : 'THE COCKPIT IS CLEAR AGAIN', 5000);
+      else if (tower && sab && !!d.in !== !!N.sabIn) { N.sabIn = !!d.in; toast(d.in ? 'SOMEONE IS IN THE COCKPIT' : 'THE COCKPIT IS CLEAR AGAIN', 5000); }   // the cabin repeats it now and then: only a change is news
     } else if (d.k === 'door') {
       if (pilot && kk() && kk().cabinDoor) kk().cabinDoor(!!d.open, d.role);
     } else if (d.k === 'link' && d.m) {
@@ -738,9 +739,10 @@
     $('twFix').textContent = d ? d.s + ' / ' + d.n : '0 / 0';
     const ph = d ? d.ph : 'wait', role = myRole();
     if (CAB_SEAT[role]) {   // the cabin seats: the saboteur is glad about a crash
-      const sab = role === 'saboteur', down = ph === 'crashed', up = ph === 'won' || ph === 'landing';
-      b.className = 'net-banner ' + (up || down ? (up !== sab ? 'ok show' : 'bad show') : ph === 'wait' || ph === 'intro' ? 'show' : '');
-      b.textContent = up ? (sab ? 'THE AIRCRAFT IS ON THE GROUND. The crew beat you. Waiting for the pilot to come back to the lobby.' : 'ON THE GROUND. You kept the cabin together. Waiting for the pilot to come back to the lobby.')
+      const sab = role === 'saboteur', down = ph === 'crashed', up = ph === 'won', appr = ph === 'landing';
+      b.className = 'net-banner ' + (up || down ? (up !== sab ? 'ok show' : 'bad show') : appr ? (sab ? 'bad show' : 'ok show') : ph === 'wait' || ph === 'intro' ? 'show' : '');
+      b.textContent = appr ? (sab ? 'ALL SYSTEMS STABLE. The aircraft is on final approach. You are running out of time.' : 'ALL SYSTEMS STABLE. Cleared to land. Brace for touchdown.')
+        : up ? (sab ? 'THE AIRCRAFT IS ON THE GROUND. The crew beat you. Waiting for the pilot to come back to the lobby.' : 'ON THE GROUND. You kept the cabin together. Waiting for the pilot to come back to the lobby.')
         : down ? (sab ? 'AIRCRAFT LOST. That was your doing. Waiting for the pilot to come back to the lobby.' : 'AIRCRAFT LOST. Waiting for the pilot to come back to the lobby.')
         : ph === 'wait' || ph === 'intro' ? (sab ? 'You are a passenger like everybody else. Nobody knows what you are up to.' : 'Cabin crew, take your position. The flight is about to get rough.') : '';
       return;

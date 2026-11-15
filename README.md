@@ -52,7 +52,7 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 ## Running and packaging
 
 - Run: open `index.html`. For the QR code and for microphone access use any static server, for example `python3 -m http.server 8765` in this folder, then `http://localhost:8765/`.
-- Package for itch.io: `bash tools/package.sh` writes `arewefalling-v1.0-itch.zip` (the jam build was `arewefalling-itch.zip`; give another name as the first argument) with `index.html` at its root. Upload it as an HTML5 game, 1280 by 720, with the fullscreen button enabled.
+- Package for itch.io: `bash tools/package.sh` writes `arewefalling-v1.0.1-itch.zip` (the jam build was `arewefalling-itch.zip`; give another name as the first argument) with `index.html` at its root. Upload it as an HTML5 game, 1280 by 720, with the fullscreen button enabled.
 - Fixed flight for testing: `index.html?seed=7`.
 
 - Tower endings without a pilot: `manual.html?crash=1` plays a burning flight that ends in the tower, `manual.html?land=1` one that is saved. Add `&outside=1` to watch either from the outside cameras.

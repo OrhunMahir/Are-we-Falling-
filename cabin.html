@@ -123,9 +123,24 @@ window.addEventListener('keydown', function (e) {
     const load = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
     load('js/vendor/gltf.min.js').catch(() => {}).then(() => load('js/roles/intruder-models.js')).catch(() => {}).then(() => load('js/roles/intruder-play.js'))
       .then(() => (role === 'attendant' ? load('js/roles/attendant-play.js') : null))
-      .then(() => { if (role === 'saboteur' && window.KKIntruder) intruder(); else if (role === 'attendant' && window.KKAttendant) attendant(); else plain(); }).catch((e) => { console.warn('cabin layer', e); plain(); });
+      .then(() => { volumeLink(); if (role === 'saboteur' && window.KKIntruder) intruder(); else if (role === 'attendant' && window.KKAttendant) attendant(); else plain(); }).catch((e) => { console.warn('cabin layer', e); plain(); });
   } else plain();
 
+  /* The title screen's volume slider and SOUND button apply to the cabin too: the layers' sounds (KKIntruder.util.snd) are
+     scaled by the volume saved on this device (80 = as loud as they were made) and silenced while the sound is off. */
+  function volumeLink() {
+    const s = window.KKIntruder && KKIntruder.util && KKIntruder.util.snd; if (!s || s.awfVol) return;
+    s.awfVol = true;
+    const k = () => {
+      let v = 80, off = false;
+      try { const x = localStorage.getItem('awf_vol'); if (x != null && x !== '' && !isNaN(+x)) v = +x; off = localStorage.getItem('awf_mute') === '1'; } catch (e) {}
+      try { const A = window.parent !== window && window.parent.KKAudio; if (A) { off = A.isMuted(); v = A.getVolume() * 100; } } catch (e) {}
+      return off ? 0 : Math.max(0, Math.min(1.25, v / 80));
+    };
+    const play = s.play, loop = s.loop;
+    s.play = function (n, v) { return play.call(this, n, Math.min(1, (v == null ? 0.8 : v) * k())); };
+    s.loop = function (n, v) { return loop.call(this, n, Math.min(1, (v == null ? 0.4 : v) * k())); };
+  }
   /* The link between the two cabin seats: in the lobby the messages go up to js/net.js (cab k:'link') and come back from the
      other seat; on the test page a BroadcastChannel joins two tabs (cabin.html?role=saboteur&att=1 and ?role=attendant&sab=1). */
   function makeLink() {
@@ -149,8 +164,16 @@ window.addEventListener('keydown', function (e) {
   const rawDoor = cabin.setDoor.bind(cabin); let myDoor = false, theirDoor = false;
   cabin.setDoor = function (v) { v = !!v; if (v !== myDoor) { myDoor = v; up({ k: 'door', open: v }); } rawDoor(myDoor || theirDoor); };
   function doorFromLobby(dr) { theirDoor = !!dr && !myDoor; rawDoor(myDoor || theirDoor); }
-  // the flight's phase changed: the layers play the end inside the cabin
-  function phaseTo(play, ph) { if (ph === 'landing' || ph === 'won') play.land(); else if (ph === 'crashed') play.crash(); }
+  // the flight's phase changed: the layers play the end inside the cabin, once. A landing is played at touchdown
+  // (7 s into the landing on every screen, see js/game.js and js/tower3d.js), not when the approach starts.
+  let ended = false, landT = 0;
+  function phaseTo(play, ph) {
+    if (ended) return;
+    const fin = (f) => { if (ended) return; ended = true; clearTimeout(landT); try { f(); } catch (e) { console.warn(e); } };
+    if (ph === 'won') fin(() => play.land());
+    else if (ph === 'landing') { if (!landT) landT = setTimeout(() => fin(() => play.land()), 7000); }
+    else if (ph === 'crashed') fin(() => play.crash());
+  }
 
   function attendant() {
     document.body.classList.add('sabplay');
@@ -162,7 +185,8 @@ window.addEventListener('keydown', function (e) {
       onTask: (m) => up(m),
       onCockpit: (inside) => { if (inside !== wasIn) { wasIn = inside; up({ k: 'cockpit', in: inside }); } },
       onDoor: () => {},
-      onCaught: () => {},
+      // an innocent passenger grabbed: the pilot's cabin gets angrier too (a grab of the intruder goes over the link)
+      onCaught: (ok, who) => { if (!ok && who === 'pax') up({ k: 'task', id: 'grab', title: 'GRABBED AN INNOCENT PASSENGER', effect: 0, fx: [{ type: 'panic', amount: 0.25 }, { type: 'nocalm' }] }); },
     });
     if (!play) { plain(); return; }
     play.setFlight({ flying: !embed });
@@ -177,7 +201,7 @@ window.addEventListener('keydown', function (e) {
     let posT = 0, lastAt = '';
     setInterval(() => {   // the old position report (the pilot's lobby code and older pages read it)
       const P = cabin.player, here = P.seat ? P.seat.id : P.place;
-      posT += 0.5; if (here !== lastAt || posT > 3) { posT = 0; lastAt = here; up({ k: 'pos', at: here }); }
+      posT += 0.5; if (here !== lastAt || posT > 3) { posT = 0; lastAt = here; up({ k: 'pos', at: here }); if (wasIn) up({ k: 'cockpit', in: true }); if (myDoor) up({ k: 'door', open: true }); }   // said again now and then: after a dropped line the pilot hears it anew
     }, 500);
     window.addEventListener('message', (e) => {
       const d = e.data; if (!embed || !d || d.awf !== 1) return;
@@ -196,14 +220,17 @@ window.addEventListener('keydown', function (e) {
     document.body.classList.add('sabplay');   // not 'ix': that class belongs to the layer's own boxes
     const link = otherOn ? makeLink() : null;   // a player in the attendant seat: no AI attendant, the two screens talk
     const play = KKIntruder.start(cabin, { seed, mode: (KK.codeMode && KK.codeMode(seed)) || 'mayday', canvas: $('cab'), seat: cabin.player.seat && cabin.player.seat.id, clock: 420, link });   // the flight code's first digit is the mode
-    const sent = {}; let phase = 'intro', lastAt = '', posT = 0, over = false;
+    const sent = {}; let phase = 'intro', lastAt = '', posT = 0, over = false, heardT = 0;
     const endCard = (cls, html) => { over = true; document.body.classList.add('over'); $('end').className = 'hud show ' + cls; $('end').innerHTML = html; try { document.exitPointerLock(); } catch (e) {} };
     setInterval(() => {
       const S = play.state, P = cabin.player;
       S.tasks.forEach((t) => { if (t.done && !sent[t.def.id]) { sent[t.def.id] = 1; up({ k: 'task', id: t.def.id, title: t.def.title, effect: t.def.effect, fx: t.def.fx || [] }); } });
       let here = P.seat ? P.seat.id : KKIntruder.placeAt(P.x, P.z); if (here === 'cockpit' && !realCockpit) here = 'door';
       if (COCKPIT_RULE === 'open' && realCockpit && S.fx && !S.done) { S.door = true; S.fx.door = Math.max(S.fx.door || 0, 2); cabin.setDoor(true); }   // 'open': the door never locks for the intruder
-      posT += 0.25; if (here !== lastAt || posT > 3) { posT = 0; lastAt = here; up({ k: 'pos', at: here }); }
+      posT += 0.25; if (here !== lastAt || posT > 3) { posT = 0; lastAt = here; up({ k: 'pos', at: here }); if (S.inCockpit && !S.done) up({ k: 'cockpit', in: true }); if (myDoor) up({ k: 'door', open: true }); }   // said again now and then: after a dropped line the pilot hears it anew
+      // in the lobby only the pilot's flight ends the flight: while the line is quiet (a hiccup, a reconnect) the layer's
+      // own clock must not run out and play a crash that never happened
+      if (embed && heardT && !S.done && !S.crashT && phase !== 'crashed') S.clock = Math.max(1, S.clock);
     }, 250);
     window.addEventListener('message', (e) => {
       const d = e.data; if (!d || d.awf !== 1) return;
@@ -217,13 +244,14 @@ window.addEventListener('keydown', function (e) {
       if (!d.st) return;
       const st = d.st;
       if (st.f && +st.f !== seed && (st.ph === 'intro' || st.ph === 'flight')) { go(st); return; }
-      if (st.tl != null && !play.state.done) play.state.clock = Math.max(1, +st.tl);   // the real time to impact
+      if (st.tl != null && !play.state.done) { play.state.clock = Math.max(1, +st.tl); heardT = 1; }   // the real time to impact
       doorFromLobby(st.dr);
       if (st.ph && st.ph !== phase) {
         phase = st.ph;
         // the layer plays the end inside the cabin itself: the dive and the impact, or the landing (older layers: our own card)
-        if (phase === 'landing' || phase === 'won') { if (play.land) play.land(); else { endCard('bad', '<b>THE AIRCRAFT LANDED</b>The crew beat you.'); try { play.stop(); } catch (er) {} } }
-        else if (phase === 'crashed') { if (play.crash) play.crash(); else { endCard('ok', '<b>AIRCRAFT LOST</b>That was your doing.'); try { play.stop(); } catch (er) {} } }
+        if (play.land && play.crash) phaseTo(play, phase);
+        else if (phase === 'landing' || phase === 'won') { endCard('bad', '<b>THE AIRCRAFT LANDED</b>The crew beat you.'); try { play.stop(); } catch (er) {} }
+        else if (phase === 'crashed') { endCard('ok', '<b>AIRCRAFT LOST</b>That was your doing.'); try { play.stop(); } catch (er) {} }
       }
     });
     window.__cabin = { cabin, play, tasks: play.state.tasks, seed, role, embed, link, get clock() { return play.state.clock; }, get phase() { return phase; } };

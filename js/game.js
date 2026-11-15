@@ -69,8 +69,12 @@
     $('btnMute').textContent = 'SOUND: ' + (A.isMuted() ? 'OFF' : 'ON');
     $('btnMute2').classList.toggle('off', A.isMuted());
   }
-  $('btnMute').onclick = () => { A.init(); A.setMuted(!A.isMuted()); setMuteLabels(); };
-  $('btnMute2').onclick = () => { A.setMuted(!A.isMuted()); setMuteLabels(); };
+  // sound on or off is remembered on this device (the cabin pages in the lobby read it too, see cabin.html)
+  function setMute(m) { A.setMuted(m); try { localStorage.setItem('awf_mute', m ? '1' : '0'); } catch (e) {} setMuteLabels(); }
+  try { if (localStorage.getItem('awf_mute') === '1') A.setMuted(true); } catch (e) {}
+  setMuteLabels();
+  $('btnMute').onclick = () => { A.init(); setMute(!A.isMuted()); };
+  $('btnMute2').onclick = () => { setMute(!A.isMuted()); };
   // fullscreen: the title button, the round button in the cockpit corner, the lobby and tower buttons and the P key. The pages in the frame call it too.
   function toggleFull() {
     const d = document, el = d.documentElement;
@@ -465,8 +469,8 @@
     log('Touchdown. ' + G.flight.aircraft.souls + ' souls safe.', 'good');
     A.stopLoop('sfx_panic', 0.3);
     A.play('sfx_cheer', { bus: 'sfx', gain: 0.9 });
-    setTimeout(() => A.play('atc_win', { radio: true, gain: 0.85 }), 1800);
-    setTimeout(() => showEnd(true), landCam ? 4200 : 2600);
+    setTimeout(() => { if (G && G.phase === 'won') A.play('atc_win', { radio: true, gain: 0.85 }); }, 1800);
+    const g = G; setTimeout(() => { if (G === g) showEnd(true); }, landCam ? 4200 : 2600);   // unless something else took over meanwhile
   }
   function crash(why) {
     if (!G || G.phase === 'crashed') return;
@@ -478,8 +482,9 @@
     sky.jolt(2);
     const ov = $('overlay'); ov.className = 'overlay show crash'; ov.innerHTML = '';
     $('cockpit').classList.remove('danger');
-    setTimeout(() => A.play('atc_lose', { radio: true, gain: 0.8 }), 2400);
-    setTimeout(() => showEnd(false), 3000);
+    const g = G;
+    setTimeout(() => { if (G === g) A.play('atc_lose', { radio: true, gain: 0.8 }); }, 2400);
+    setTimeout(() => { if (G === g) showEnd(false); }, 3000);
   }
   function endCleanup() {
     controllers.forEach((c) => c && c.destroy && c.destroy()); controllers = [];
