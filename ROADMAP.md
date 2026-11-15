@@ -105,6 +105,13 @@ Release check, 15 November (v1.0.1): every flow played again, online and alone. 
 - A cabin seat in the cockpit, or holding the cockpit door, says so again every few seconds: a pilot whose line dropped and came back sees the visitor again (before, the visitor stayed invisible until they walked out and in). The tower's toast still shows only changes.
 - QA scripts for this check: `tests/qa/` (solo flights in all three modes solved panel by panel, crash, timeout, abort; tower as host, second flight, public list, full lobby; three-seat cabin flows; the fixes above).
 
+Visual pass, 15 November (v1.0.2): every scene photographed and looked at like a player would.
+
+- The cockpit shell (walls, ceiling, floor, consoles, seats) was flat grey boxes. It now has drawn surfaces: lined wall panels with screws, a padded ceiling with the dome light's lens, a ribbed rubber floor, seat fabric, a reinforced FLIGHT DECK door with a viewer and a door frame, and a back on the observer seat. The cabin seats see the same cockpit through the door.
+- The cabin got the same treatment: wall lining, airline carpet and aisle runner, ceiling and overhead bin panels with latches, seat fabric with a tray table and seat pocket on every seat back, rounded windows with a pulled-up blind, brushed steel galleys, a cockpit door with a viewer. The cabin's seat plan does not change with them (their own random numbers).
+- The flight attendant who walks into the pilot's cockpit is now the same Meshy model with a face the cabin shows (`js/roles/cabin-people.js` and `KKCrewFit` from `js/cabin-fit.js`, loaded on her first visit), not the blocky figure. She waits outside the door for up to 3 s while it loads and keeps the blocky figure if it cannot load.
+- The tower's airliner (Meshy) looked fine in every shot, so it stays as it is. The blocky captain the cabin seats see and the blocky intruder stay: there is no Meshy pilot or intruder model yet.
+
 Still open:
 
 1. **Nicer aircraft textures** on the airliner seen from the tower (Efe, Meshy).

@@ -11,20 +11,24 @@
        and it puts the oxygen mask cup on the face instead of over the knees;
      - gives the attendant a face and a standing pose that the walk cycle blends into whenever she stops.
 
-   cabin.html loads it right after js/cabin3d.js. cabin.html?fit=0 switches it off (to compare). */
+   cabin.html loads it right after js/cabin3d.js. cabin.html?fit=0 switches it off (to compare). Outside the cabin it
+   only offers KKCrewFit (a face and a standing pose for a crew model), see the end of this file. */
 (function () {
   'use strict';
   const T = window.THREE, K = window.KKCabin;
-  if (!T || !K || !K.start || /[?&]fit=0\b/.test(location.search)) return;
+  if (!T) return;
+  const inCabin = !!(K && K.start) && !/[?&]fit=0\b/.test(location.search);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
 
-  const start = K.start;
-  K.start = function () {
-    const cabin = start.apply(this, arguments);
-    try { if (cabin && cabin.scene) attach(cabin.scene); } catch (e) { console.warn('cabin-fit', e); }
-    return cabin;
-  };
+  if (inCabin) {
+    const start = K.start;
+    K.start = function () {
+      const cabin = start.apply(this, arguments);
+      try { if (cabin && cabin.scene) attach(cabin.scene); } catch (e) { console.warn('cabin-fit', e); }
+      return cabin;
+    };
+  }
 
   const fit = { pax: [], crew: [], models: [] };   // what was found, also for tests (window.__cabinFit)
   window.__cabinFit = fit;
@@ -272,4 +276,6 @@
   }
   // in the head bone's units: the chin is at 0, the hair strands over the forehead end at about 8
   const FACE = { eyeX: 3.3, eyeY: 5.4, eyeW: 1.25, eyeH: 1.6, browUp: 2.5, mouthY: 1.7, mouthW: 1.7 };
+  // the same face and standing pose for a crew model shown somewhere else (the attendant visiting the pilot's cockpit, js/cockpit3d.js)
+  window.KKCrewFit = { member: crewMember, stand };
 })();

@@ -302,7 +302,70 @@
   function lam(color) { return new T.MeshLambertMaterial({ color }); }
   function B(w, h, d, x, y, z, mat, parent) {
     const m = new T.Mesh(new T.BoxGeometry(w, h, d), typeof mat === 'string' ? lam(mat) : mat);
+    if (m.material.userData.tile) tileUV(m.geometry, w, h, d, m.material.userData.tile);
     m.position.set(x, y, z); (parent || scene).add(m); return m;
+  }
+  // A box's faces each get the whole texture by default, so one tile would stretch over a 2.7 m wall and shrink on a
+  // 0.3 m console. Scale each face's uv by its size in metres instead: every surface shows the texture at the same density.
+  function tileUV(geo, w, h, d, size) {
+    const uv = geo.attributes.uv, dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];   // +x -x +y -y +z -z
+    for (let i = 0; i < uv.count; i++) { const f = dims[Math.floor(i / 4)] || dims[0]; uv.setXY(i, uv.getX(i) * f[0] / size, uv.getY(i) * f[1] / size); }
+    uv.needsUpdate = true;
+  }
+  // ---- the shell's surfaces: lined wall panels with screws, a padded ceiling, ribbed rubber floor, console metal and
+  // seat fabric. Drawn once on small canvases and tiled by tileUV(). The colours stay close to the old flat ones.
+  const surfs = {};
+  function surf(kind) {
+    if (surfs[kind]) return surfs[kind];
+    const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
+    let seed = kind.length * 977 + 13; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const noise = (n, a, sz) => { for (let i = 0; i < n; i++) { const v = rnd() < 0.5 ? 0 : 255; x.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',' + (a * rnd()) + ')'; x.fillRect(rnd() * S, rnd() * S, sz, sz); } };
+    const screw = (sx, sy, r) => { x.fillStyle = 'rgba(0,0,0,0.55)'; x.beginPath(); x.arc(sx, sy + 0.8, r, 0, 7); x.fill(); x.fillStyle = 'rgba(190,198,208,0.55)'; x.beginPath(); x.arc(sx, sy, r * 0.8, 0, 7); x.fill(); x.strokeStyle = 'rgba(0,0,0,0.6)'; x.lineWidth = 1; x.beginPath(); x.moveTo(sx - r * 0.6, sy); x.lineTo(sx + r * 0.6, sy); x.stroke(); };
+    const seam = (rx, ry, rw, rh, r) => { x.lineWidth = 2; x.strokeStyle = 'rgba(0,0,0,0.6)'; rr(x, rx, ry, rw, rh, r); x.stroke(); x.lineWidth = 1; x.strokeStyle = 'rgba(255,255,255,0.09)'; rr(x, rx + 2, ry + 2, rw - 4, rh - 4, r); x.stroke(); };
+    let size = 0.8;
+    if (kind === 'wall') {             // one tile: one 0.8 m panel, slightly brushed, a screw in each corner
+      const g = x.createLinearGradient(0, 0, 0, S); g.addColorStop(0, '#33373e'); g.addColorStop(1, '#282b31'); x.fillStyle = g; x.fillRect(0, 0, S, S);
+      for (let i = 0; i < 140; i++) { x.fillStyle = 'rgba(255,255,255,' + (0.012 + rnd() * 0.02) + ')'; x.fillRect(0, rnd() * S, S, 1); }
+      noise(1600, 0.07, 1); seam(3, 3, S - 6, S - 6, 10);
+      [[16, 16], [S - 16, 16], [16, S - 16], [S - 16, S - 16]].forEach((q) => screw(q[0], q[1], 4));
+      x.fillStyle = 'rgba(0,0,0,0.18)'; x.fillRect(40, S * 0.62, S - 80, 3);   // a pressed rib across the panel
+      x.fillStyle = 'rgba(255,255,255,0.05)'; x.fillRect(40, S * 0.62 + 3, S - 80, 1);
+    } else if (kind === 'ceil') {      // padded headliner: soft quilted squares
+      size = 0.6; x.fillStyle = '#3c4047'; x.fillRect(0, 0, S, S);
+      for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+        const g = x.createRadialGradient(i * 128 + 64, j * 128 + 60, 6, i * 128 + 64, j * 128 + 64, 78); g.addColorStop(0, 'rgba(255,255,255,0.08)'); g.addColorStop(1, 'rgba(0,0,0,0.22)');
+        x.fillStyle = g; x.fillRect(i * 128, j * 128, 128, 128); x.strokeStyle = 'rgba(0,0,0,0.45)'; x.lineWidth = 2; x.strokeRect(i * 128 + 1, j * 128 + 1, 126, 126);
+      }
+      noise(2600, 0.06, 1);
+    } else if (kind === 'floor') {     // ribbed rubber mat
+      size = 0.5; x.fillStyle = '#191b1f'; x.fillRect(0, 0, S, S); noise(2400, 0.08, 1);
+      for (let yy = 8; yy < S; yy += 16) { x.fillStyle = 'rgba(0,0,0,0.5)'; x.fillRect(0, yy, S, 4); x.fillStyle = 'rgba(255,255,255,0.05)'; x.fillRect(0, yy + 4, S, 1); }
+    } else if (kind === 'dark') {      // console and glareshield metal: near black, fine grain, a screw now and then
+      size = 0.5; x.fillStyle = '#18191d'; x.fillRect(0, 0, S, S); noise(3000, 0.07, 1);
+      seam(2, 2, S - 4, S - 4, 6); [[12, 12], [S - 12, 12], [12, S - 12], [S - 12, S - 12]].forEach((q) => screw(q[0], q[1], 3));
+    } else if (kind === 'trim') {      // window posts and frames: painted, a little lighter
+      size = 0.4; x.fillStyle = '#3d4148'; x.fillRect(0, 0, S, S); noise(2000, 0.06, 1);
+      x.fillStyle = 'rgba(0,0,0,0.25)'; x.fillRect(0, S / 2 - 1, S, 2);
+    } else if (kind === 'seat') {      // woven seat fabric with stitched panels
+      size = 0.25; x.fillStyle = '#2b3848'; x.fillRect(0, 0, S, S);
+      for (let i = 0; i < S; i += 3) { x.fillStyle = 'rgba(0,0,0,' + (0.08 + rnd() * 0.08) + ')'; x.fillRect(i, 0, 1, S); x.fillStyle = 'rgba(255,255,255,' + (0.02 + rnd() * 0.03) + ')'; x.fillRect(0, i, S, 1); }
+      x.setLineDash([5, 4]); x.strokeStyle = 'rgba(160,175,195,0.35)'; x.lineWidth = 1.5; x.strokeRect(10, 10, S - 20, S - 20); x.setLineDash([]);
+    }
+    const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = maxAniso;
+    const mat = new T.MeshLambertMaterial({ map: t }); mat.userData.tile = size;
+    return (surfs[kind] = mat);
+  }
+  // the cockpit door: a reinforced panel with a viewer, a placard and a kick plate (one texture over the whole face)
+  function doorMat() {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 384; const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 128, 0); g.addColorStop(0, '#41464e'); g.addColorStop(0.5, '#4b5058'); g.addColorStop(1, '#3d4249'); x.fillStyle = g; x.fillRect(0, 0, 128, 384);
+    x.strokeStyle = 'rgba(0,0,0,0.55)'; x.lineWidth = 2; rr(x, 10, 12, 108, 150, 6); x.stroke(); rr(x, 10, 176, 108, 150, 6); x.stroke();
+    x.strokeStyle = 'rgba(255,255,255,0.08)'; x.lineWidth = 1; rr(x, 12, 14, 104, 146, 5); x.stroke(); rr(x, 12, 178, 104, 146, 5); x.stroke();
+    x.fillStyle = '#0c0e12'; x.beginPath(); x.arc(64, 70, 6, 0, 7); x.fill(); x.strokeStyle = '#9aa1a9'; x.lineWidth = 2; x.beginPath(); x.arc(64, 70, 7, 0, 7); x.stroke();
+    x.fillStyle = '#c9a227'; x.fillRect(30, 104, 68, 18); x.fillStyle = '#111'; x.font = 'bold 9px monospace'; x.textAlign = 'center'; x.fillText('FLIGHT DECK', 64, 116);
+    x.fillStyle = '#5c626b'; x.fillRect(4, 340, 120, 40); for (let i = 8; i < 124; i += 8) { x.fillStyle = 'rgba(0,0,0,0.35)'; x.fillRect(i, 344, 2, 32); }
+    const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = maxAniso;
+    return new T.MeshLambertMaterial({ map: t });
   }
 
   function buildSlots() {
@@ -321,9 +384,11 @@
   }
 
   function buildShell() {
-    const wall = lam('#2b2e33'), dark = lam('#17191c'), trim = lam('#3b3f45'), seat = lam('#2b3848');
-    B(2.8, 0.05, 4.2, 0, -0.025, 0.7, lam('#15171a'));
-    B(2.8, 0.05, 4.2, 0, 2.725, 0.7, wall);
+    const wall = surf('wall'), dark = surf('dark'), trim = surf('trim'), seat = surf('seat');
+    B(2.8, 0.05, 4.2, 0, -0.025, 0.7, surf('floor'));
+    B(2.8, 0.05, 4.2, 0, 2.725, 0.7, surf('ceil'));
+    const lens = new T.Mesh(new T.CircleGeometry(0.11, 20), new T.MeshBasicMaterial({ color: '#fff1d6' })); lens.rotation.x = Math.PI / 2; lens.position.set(0, 2.698, 0.9); scene.add(lens);   // the dome light's lens
+    B(0.3, 0.012, 0.3, 0, 2.7, 0.9, trim);
     B(2.7, 0.95, 0.06, 0, 2.245, -1.28, wall);            // wall above windshield
     B(2.7, 1.12, 0.06, 0, 0.56, -1.28, dark);              // below windshield
     B(0.07, 0.66, 0.07, 0, 1.44, -1.25, trim);
@@ -347,7 +412,8 @@
       const wt = new T.CanvasTexture(wc); wt.colorSpace = T.SRGBColorSpace;
       const way = new T.Mesh(new T.PlaneGeometry(0.62, 1.92), new T.MeshBasicMaterial({ map: wt })); way.rotation.y = Math.PI; way.position.set(0, 0.96, 2.758); scene.add(way);
       doorG = new T.Group(); doorG.position.set(-0.31, 0, 2.75); scene.add(doorG);
-      B(0.62, 1.92, 0.03, 0.31, 0.96, 0, lam('#454a51'), doorG);    // cockpit door
+      B(0.62, 1.92, 0.03, 0.31, 0.96, 0, doorMat(), doorG);    // cockpit door
+      [-1, 1].forEach((sd) => B(0.05, 1.98, 0.05, sd * 0.335, 0.99, 2.76, trim)); B(0.72, 0.05, 0.05, 0, 1.97, 2.76, trim);   // door frame
       B(0.03, 0.12, 0.05, 0.53, 1.0, -0.03, lam('#b9bec5'), doorG);
     }
     B(2.66, 0.035, 0.52, 0, 1.128, -1.02, dark);           // glareshield
@@ -357,7 +423,7 @@
     // seats
     B(0.5, 0.12, 0.5, 0.72, 0.45, 0.66, seat); B(0.5, 0.7, 0.09, 0.72, 0.8, 0.93, seat); B(0.14, 0.45, 0.14, 0.72, 0.2, 0.66, dark);   // slid back on its rails: its back used to hide the right console
     B(0.5, 0.12, 0.5, -0.72, 0.45, 0.3, seat); B(0.14, 0.45, 0.14, -0.72, 0.2, 0.3, dark);
-    B(0.46, 0.1, 0.46, 0.5, 0.45, 2.0, seat); B(0.12, 0.45, 0.12, 0.5, 0.2, 2.0, dark);
+    B(0.46, 0.1, 0.46, 0.5, 0.45, 2.0, seat); B(0.12, 0.45, 0.12, 0.5, 0.2, 2.0, dark); B(0.44, 0.56, 0.08, 0.5, 0.79, 2.24, seat);   // observer seat with its back
     // thrust levers on the pedestal's front edge (decor)
     [-0.05, 0.05].forEach((x) => { B(0.03, 0.2, 0.03, x, 0.6, -0.9, lam('#9aa1a9')).rotation.x = 0.35; B(0.06, 0.045, 0.05, x, 0.7, -0.865, lam('#e9ebee')); });
     makeBottle(); makeBobble(); makeAshtray();
@@ -1134,8 +1200,49 @@
   function visitor(role, on) {
     if (guestMode || !renderer || !PAIR[role]) return;
     let v = visitors[role];
-    if (!v) { if (!on) return; const f = makeFigure(LOOKS[role]); f.g.visible = false; scene.add(f.g); v = visitors[role] = { f, on: false, x: 0, z: 0, yaw: 0, ph: Math.random() * 6, kiss: 0 }; }
+    if (!v) {
+      if (!on) return; const f = makeFigure(LOOKS[role]); f.g.visible = false; scene.add(f.g); v = visitors[role] = { f, on: false, x: 0, z: 0, yaw: 0, ph: Math.random() * 6, kiss: 0, wait: 0 };
+      if (role === 'attendant') meshyAttendant(v);
+    }
+    if (on && !v.on) v.wait = 0;
     v.on = !!on;
+  }
+  // The flight attendant as the cabin shows her: the Meshy model from js/roles/cabin-people.js with the face and standing
+  // pose of js/cabin-fit.js, walking with her own walk cycle. Both files are loaded on her first visit; she waits outside
+  // the door for up to 3 s while they load, and keeps the blocky figure if they cannot.
+  function addScript(src, cb) { const sc = document.createElement('script'); sc.src = src; sc.onload = () => cb(true); sc.onerror = () => cb(false); document.head.appendChild(sc); }
+  function meshyAttendant(v) {
+    v.loading = true;
+    const done = () => { v.loading = false; };
+    const ready = () => {
+      const b64 = window.KK_GLB && window.KK_GLB.crew_att;
+      if (!b64 || !T.GLTFLoader || !window.KKCrewFit) return done();
+      try {
+        const bin = atob(b64), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        new T.GLTFLoader().parse(buf.buffer, '', (gltf) => {
+          try {
+            if (visitors.attendant !== v) return done();
+            const model = gltf.scene, f = v.f; let skinned = null;
+            model.traverse((o) => { if (o.isSkinnedMesh && !skinned) skinned = o; if (o.isMesh) o.frustumCulled = false; });
+            if (!skinned) return done();
+            model.updateMatrixWorld(true);
+            const box = new T.Box3().setFromObject(model), c = box.getCenter(new T.Vector3()), k = 1.66 / FIG / ((box.max.y - box.min.y) || 1);
+            model.scale.multiplyScalar(k); model.position.set(-c.x * k, -box.min.y * k, -c.z * k);   // feet on the floor, centred on the figure
+            model.traverse((o) => { if (o.material && o.material.metalness !== undefined) { o.material.metalness = Math.min(o.material.metalness, 0.1); o.material.roughness = Math.max(o.material.roughness, 0.6); } });
+            const turn = new T.Group(); turn.rotation.y = Math.PI; turn.add(model);                    // facing -z like the figure
+            f.hips.visible = false; f.arms.forEach((a) => { a.up.visible = false; a.fo.visible = false; });
+            f.g.add(turn);
+            v.mixer = gltf.animations && gltf.animations.length ? new T.AnimationMixer(model) : null;
+            if (v.mixer) v.mixer.clipAction(gltf.animations[0]).play();
+            v.fit = KKCrewFit.member(f.g, skinned);   // measures her speed from the figure's own position
+          } catch (e) { console.warn('cockpit: attendant model', e); }
+          done();
+        }, () => done());
+      } catch (e) { done(); }
+    };
+    if (window.KK_GLB && window.KK_GLB.crew_att && window.KKCrewFit) return ready();
+    const fit = () => (window.KKCrewFit ? ready() : addScript('js/cabin-fit.js', ready));
+    if (window.KK_GLB && window.KK_GLB.crew_att) fit(); else addScript('js/roles/cabin-people.js', (ok) => (ok ? fit() : done()));
   }
   let forced = false;                                       // the intruder cracked the door: it stands open with nobody in it
   function updateVisitors(dt) {
@@ -1144,6 +1251,7 @@
       const v = visitors[role], f = v.f;
       if (!f.g.visible) {                                   // still outside: they step in once the door has swung open
         if (!v.on) return;
+        if (v.loading && (v.wait += dt) < 3) return;      // her model is still loading: she knocks a moment longer
         open = 1; if (doorG && doorG.rotation.y > -1) return;
         v.x = GATE[0]; v.z = GATE[1]; v.yaw = 0; f.g.visible = true;
       }
@@ -1160,6 +1268,7 @@
       f.torso.rotation.set(-0.02 - kk * 0.42 + Math.sin(clock * 1.1 + v.ph) * 0.012, Math.sin(clock * 0.5 + v.ph) * 0.05, 0);
       f.head.rotation.set(-kk * 0.2 - (calm ? 0 : 0.12), Math.sin(clock * 0.37 + v.ph) * (calm ? 0.15 : 0.45), 0);
       poseFigure(f, 1, null, 0);
+      if (v.mixer) { v.mixer.update(dt * (walk ? 1 : 0.0001)); if (v.fit) KKCrewFit.stand(v.fit, dt); }
     });
     if (doorG) doorG.rotation.y += ((open ? -1.4 : 0) - doorG.rotation.y) * Math.min(1, dt * 6);
   }

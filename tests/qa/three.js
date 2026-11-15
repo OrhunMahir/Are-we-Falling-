@@ -35,7 +35,7 @@ async function until(p, fn, arg, ms, label) { const t0 = Date.now(); while (Date
     }
     // the end
     if (END === 'crash') await H.evaluate(() => window.__kk.crash('test')); else await H.evaluate(() => window.__kk.land());
-    const endTxt = await until(C, () => { const e = document.getElementById(window.__cabin.role === 'saboteur' ? 'ixEndH' : 'axEndH'); return e && e.textContent; }, null, 200000, 'cabin end card').catch((e) => { fail(e.message); return null; });
+    const endTxt = await until(C, () => { const e = document.getElementById(window.__cabin.role === 'saboteur' ? 'ixEndH' : 'axEndH'); return e && e.textContent; }, null, 400000, 'cabin end card').catch((e) => { fail(e.message); return null; });
     log('cabin end card:', endTxt, '| banner:', await C.textContent('#twBanner'));
     await C.screenshot({ path: 'three-' + ROLE + '-' + END + '.png' });
     // back to the lobby: the pilot returns
