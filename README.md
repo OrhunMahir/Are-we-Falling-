@@ -45,14 +45,14 @@ When the flight ends the handbook is put down and the head follows the aircraft 
 ## Playing together
 
 - **Same room:** one screen runs the cockpit, a second device opens `manual.html` (the title screen shows a QR code when the game is served over http).
-- **Online:** press **PLAY ONLINE**, create a lobby and give the four-character code to your partner, or use one of the public lobbies (ALPHA to HOTEL). Pick seats in the lobby: PILOT and TOWER are needed, **INTRUDER** and **ATTENDANT** are optional seats in the aircraft cabin. The intruder sits among the passengers and does small jobs that cost the pilot time; the flight attendant does jobs that win time back. Voice chat is built in, with a radio effect; the mic can be open, push to talk or muted.
+- **Online:** press **PLAY ONLINE**, create a lobby and give the four-character code to your partner, or use one of the public lobbies (ALPHA to HOTEL). Pick seats in the lobby: PILOT and TOWER are needed, **INTRUDER** and **ATTENDANT** are optional seats in the aircraft cabin. The intruder sits among the passengers and does small jobs that cost the pilot time (lights out, call bells, a blocked aisle, a cracked cockpit door); the flight attendant undoes them, calms the cabin, brings the captain a black coffee and can catch the intruder in the act. Both walk in first person, see each other, and can step into the real cockpit behind the pilot. Voice chat is built in, with a radio effect; the mic can be open, push to talk or muted.
 
 Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling server, peer to peer data and audio. No own server is needed. `?peer=host:port` points the game at another PeerServer for testing.
 
 ## Running and packaging
 
 - Run: open `index.html`. For the QR code and for microphone access use any static server, for example `python3 -m http.server 8765` in this folder, then `http://localhost:8765/`.
-- Package for itch.io: `bash tools/package.sh` writes `arewefalling-itch.zip` with `index.html` at its root. Upload it as an HTML5 game, 1280 by 720, with the fullscreen button enabled.
+- Package for itch.io: `bash tools/package.sh` writes `arewefalling-v1.0-itch.zip` (the jam build was `arewefalling-itch.zip`; give another name as the first argument) with `index.html` at its root. Upload it as an HTML5 game, 1280 by 720, with the fullscreen button enabled.
 - Fixed flight for testing: `index.html?seed=7`.
 
 - Tower endings without a pilot: `manual.html?crash=1` plays a burning flight that ends in the tower, `manual.html?land=1` one that is saved. Add `&outside=1` to watch either from the outside cameras.
@@ -76,7 +76,7 @@ Online play uses [PeerJS](https://peerjs.com) with the public PeerJS signalling 
 | `js/net.js`, `css/net.css` | lobbies, seats, voice chat, state sync | Orhun |
 | `cabin.html`, `js/cabin3d.js` | the aircraft cabin where the intruder and the flight attendant play; also a test page of its own | Orhun |
 | `js/roles/saboteur.js` | the intruder's task pool (the seat is called `saboteur` in the code) | **Batu** |
-| `js/roles/attendant.js` | the flight attendant's task pool: one task that undoes each sabotage, opened when the sabotage (or a malfunction) happens, and KISS THE PILOT with its own screen effect | **Efe** |
+| `js/roles/attendant.js` | the flight attendant's task pool: one task that undoes each sabotage, opened when the sabotage (or a malfunction) happens, the cabin calm, and a black coffee for the captain | **Efe** |
 | `manual.html` (handbook content and flight code box) | the tower handbook, generated from `rules.js` | Orhun |
 | `manual.html` (everything under `body.t3d` in the CSS and the "3D tower room" part of the script) | how the handbook sits in the tower room | **Efe** |
 | `js/tower3d.js` | **the 3D tower room**: sky, runway, cab, desk, aircraft, smoke, the crash into the tower, the landing, and outside cameras (`KKTower.start(canvas, { view: 'outside' })`) | **Efe** |

@@ -76,20 +76,29 @@ Two more places use the tower room, so please keep them working when you change 
 - The old flat desk in the peek view is gone: one wooden desk from the window to the controller
 - Phone fallback: plain handbook
 - **The two cabin seats are in the online lobby**: INTRUDER and ATTENDANT, both optional, one of each. They play in the cabin (`cabin.html` in a frame). The saboteur plays Batu's first-person version (`js/roles/intruder-play.js`: walking with W A S D, suspicion bar, chest bomb, blackout, smoke and mask effects); the flight attendant plays the simple task runner until Efe's version is there. Tasks are dealt from the flight code; a finished task changes the real time to impact; the pilot gets a message, a line in the log and the cabin's reaction (turbulence, angrier passengers; calmer passengers for the flight attendant); the tower gets a note; the two cabin players see each other walk and sit; at the end each of them is told who won
-- **The flight attendant's tasks** (`js/roles/attendant.js`): one task for every sabotage, each undoes it and gives back the 2 or 3 seconds it took. A task comes onto the list when the intruder finishes that sabotage ("TROUBLE IN THE CABIN · PLUNGE THE TOILET"); with no intruder on board the same trouble turns up by itself as a malfunction that costs no time. Fixing ends the sabotage's effects on the intruder's screen (`clears`) and calms the pilot's passengers. Six tasks have a voice line. On its own: **KISS THE PILOT** at the cockpit door, once a flight, +5 seconds and nothing else; the screen goes dark and lipstick marks appear
+- **The flight attendant's tasks** (`js/roles/attendant.js`): one task for every sabotage, each undoes it and gives back the 2 or 3 seconds it took. A task comes onto the list when the intruder finishes that sabotage ("TROUBLE IN THE CABIN · PLUNGE THE TOILET"); with no intruder on board the same trouble turns up by itself as a malfunction that costs no time. Fixing ends the sabotage's effects on the intruder's screen (`clears`) and calms the pilot's passengers. Six tasks have a voice line. On its own (dropped after the jam): **KISS THE PILOT** at the cockpit door, once a flight, +5 seconds and nothing else; the screen goes dark and lipstick marks appear
 - Three ways to work a task: hold E, tap Q and E in turns, type a short key code (`input: 'hold' | 'mash' | 'code'` in the task pool)
 - The aircraft cabin, first version, on a page of its own (`cabin.html`): nine rows of seats with passengers, aisle, galley, lavatory, cockpit door, walking, sitting down in any free seat, and a test runner that deals the tasks of a role from `js/roles/`
 
-## Planned next
+## After the jam (for the Chroma Awards, 7 January 2027)
 
-Nothing below is started. Order to be decided by Orhun.
+Done on the `post-jam-fixes` branch, 14 and 15 November:
 
-1. ~~Crash into the tower~~ and 2. ~~the nicer landing shot~~ are done (see Done). Orhun may want the crash on the pilot's end screen too: `KKTower.start(canvas, { view: 'outside' })` plus the same `st` shows it from outside.
-3. **Nicer aircraft textures** on the airliner seen from the tower. (Efe, with a new Meshy model or textures.)
-4. **The cabin seats, what is still open** (Orhun). The seats are in the lobby and move the real clock (see Done and [The cabin](#the-cabin-first-version-is-in)). Still open: the flight attendant taking the passengers over from the pilot's PA; stalling and catching the saboteur (`noise`); the effects `calls`, `door` and `block`, and a real `blackout` (today it is one flicker); `once`; Batu's Meshy models and loop sounds in the cabin; the cabin seats watching the landing and the crash; cabin seats in same-room play without a lobby.
-5. **The saboteur seat** (Batu) and **the flight attendant seat** (Efe, after items 1 to 3). See [The four seats](#the-four-seats).
-6. **Cockpit door** that opens and closes once somebody plays in the cabin. (Orhun.)
-7. **Rosebud version** after the itch.io submission, if the organisers ask for it.
+- **Lobby joining** fixed on venue networks (relay fallback, retries), and a tower or cabin player whose line drops mid-flight reconnects by itself and gets the same seat back.
+- **Passengers sit in their seats** (`js/cabin-fit.js` fits the Meshy passengers), the flight attendant model stands and has a face.
+- **The real cockpit behind the cabin door** (`js/cabin-cockpit.js`): the flight attendant may always walk in, the intruder after CRACK THE DOOR. Inside, both see the pilot's real cockpit with the captain moving as the pilot looks around; the pilot sees who stands behind them.
+- **The flight attendant seat is played in first person** (`js/roles/attendant-play.js`): undoes sabotage, calms the cabin (hold E in the aisle), brings the captain a black coffee (pour in the galley, hand it over in the cockpit: it sobers the captain up), and catches the intruder with C, only if caught at work. KISS THE PILOT is gone.
+- **The two cabin seats see each other**: poses, effects, plants and the catch go through the lobby (`cab` `link` in `js/net.js`).
+- **Sabotage effects on the pilot's screen**: a real blackout (12 s), cabin call bells (15 s), a blocked aisle that halves the PA (15 s), the forced cockpit door. The flight attendant's matching task ends them early.
+- **Title screen**: HOW TO PLAY, CREDITS, a remembered volume slider, a note on phones that the pilot needs a computer.
+- **No more "Kara Kutu"**: radio voice lines re-recorded without the callsign, flight numbers read AWF.
+- Tests: `tests/net` (lobby), `tests/e2e/four.js` (four seats, the whole cabin flow).
+
+Still open:
+
+1. **Nicer aircraft textures** on the airliner seen from the tower (Efe, Meshy).
+2. Cabin seats in same-room play without a lobby.
+3. **Rosebud version**, if wanted.
 
 ## The four seats
 
@@ -126,9 +135,9 @@ On screen this seat is called **INTRUDER**. In the code it stays `saboteur` (`KK
 - **Calms the passengers.** With a flight attendant on board this is their job; without one the pilot keeps doing it over the PA, as today.
 - **Stalls and distracts the saboteur**, so that sabotage takes longer or fails.
 - Can **sit down in any empty seat** too, like the saboteur.
-- Has a **task pool of their own** (done, see Done): the answers to the intruder's sabotage, opened when the sabotage happens, plus KISS THE PILOT.
+- Has a **task pool of their own** (done, see Done): the answers to the intruder's sabotage, opened when the sabotage happens (KISS THE PILOT was dropped after the jam).
 - **Every finished task gives the pilot extra time.**
-- Stretch goal, only if there is time at the very end: the flight attendant can catch the saboteur.
+- Catches the intruder (done after the jam): press C next to them while they are at work.
 
 ### The cabin (first version is in)
 
@@ -201,7 +210,6 @@ Places, numbers and the field names above are a first proposal, not final.
 ## Loose ends
 
 - Try the online lobby on two real computers over the internet, and check microphone permission inside the itch.io embed.
-- The recorded voice lines still use the old "Kara Kutu" callsign and the placard shows flight numbers starting with "KK".
 
 ## Rules of the jam
 

@@ -197,7 +197,9 @@
     const want = KK.CABIN.answer(cb.complaint.key, cb.lastPA), pa = KK.CABIN.PA.find((p) => p.key === key);
     cb.lastPA = key;
     if (key === want) {
-      cb.unrest = Math.max(0, cb.unrest - 0.55); cb.complaint = null; cb.cool = 8; cb.calmed++;
+      const blocked = fxOn('block');   // a trolley stuck across the aisle: the passengers hear the captain, but nobody can get to them
+      cb.unrest = Math.max(0, cb.unrest - (blocked ? 0.28 : 0.55)); cb.complaint = null; cb.cool = blocked ? 4 : 8; cb.calmed++;
+      if (blocked) setTimeout(() => subtitle('THE AISLE IS BLOCKED · THE CABIN ONLY HALF CALMS DOWN', 3000), 7200);
       A.sfx.chime(); setTimeout(() => A.play(pa.clip, { gain: 0.9, radio: true }), 350);
       subtitle('CAPTAIN (PA): “' + pa.text + '”', 7000);
       log('Announcement "' + key + '" calmed the cabin.', 'good');
@@ -243,6 +245,22 @@
     log('The captain took a sip of whiskey (' + G.sips + ' of ' + MAX_SIPS + ').');
     return true;
   };
+  // ---------- what a sabotage does to the cockpit for a while: lights out, call bells, a blocked aisle ----------
+  const fxEl = (() => { const e = document.createElement('div'); e.id = 'cabFx'; document.body.appendChild(e); return e; })();
+  const fxUntil = {}; let bellT = 0;
+  function fxOn(type) { return (fxUntil[type] || 0) > performance.now(); }
+  function cabinFx(type, ms) {
+    fxUntil[type] = Math.max(fxUntil[type] || 0, performance.now() + ms);
+    fxTick();
+  }
+  function cabinFxClear(types) { (types || Object.keys(fxUntil)).forEach((t) => { fxUntil[t] = 0; }); fxTick(); }
+  function fxTick() {
+    const live = !!G && G.phase === 'flight';
+    if (!live) Object.keys(fxUntil).forEach((t) => { fxUntil[t] = 0; });
+    fxEl.className = (fxOn('blackout') ? 'dark ' : '') + (fxOn('calls') ? 'bells' : '');
+    if (fxOn('calls') && performance.now() > bellT) { bellT = performance.now() + 1300; try { A.sfx.chime(); } catch (e) {} }
+  }
+  setInterval(fxTick, 250);
   // ---------- the cabin seats: what the saboteur and the flight attendant do in the cabin lands here ----------
   function cabinTask(d) {
     if (!G || G.phase !== 'flight' || !d) return;
@@ -256,12 +274,18 @@
         if (f.type === 'turbulence') turbulence(0.7);
         else if (f.type === 'panic') G.cabin.unrest = Math.min(1, G.cabin.unrest + (+f.amount || 0.25) * 0.6);
         else if (f.type === 'masks' || f.type === 'smoke') { G.cabin.unrest = Math.min(1, G.cabin.unrest + 0.12); if (!G.cabin.complaint) cabinComplain(); }
-        else if (f.type === 'blackout') { K3.lightning(); turbulence(0.3); }
+        else if (f.type === 'blackout') { K3.lightning(); turbulence(0.3); cabinFx('blackout', 12000); subtitle('POWER FAILURE · THE PANEL LIGHTS ARE OUT', 3500); }
+        else if (f.type === 'calls') { cabinFx('calls', 15000); subtitle('EVERY CALL BUTTON IN THE CABIN IS RINGING', 3500); }
+        else if (f.type === 'block') { cabinFx('block', 15000); log('A trolley blocks the aisle: announcements only half work for a while.', 'bad'); }
         else if (f.type === 'calm') G.cabin.unrest = Math.max(0, G.cabin.unrest - (+f.amount || 0.15));   // the flight attendant put an end to a panic
         else if (f.type === 'coffee') { G.drunk = Math.max(0, G.drunk - 2.5); renderDrunk(); }            // a black coffee from the flight attendant: the labels stop swimming
       });
     }, 3000);
     if (!sab && !(d.fx || []).some((f) => f && f.type === 'nocalm')) G.cabin.unrest = Math.max(0, G.cabin.unrest - 0.2);   // the flight attendant calms the cabin with every job done, unless the task says 'nocalm' (the kiss: time only)
+    if (!sab) {   // the flight attendant's job undid a sabotage: what it started stops here too (js/roles/attendant.js, "clears")
+      const def = ((KK.ROLES && KK.ROLES.attendant && KK.ROLES.attendant.tasks) || []).find((t) => String(t.id).toUpperCase() === String(d.id).toUpperCase());
+      if (def && def.clears) cabinFxClear(def.clears.filter((t) => t !== 'panic'));
+    }
     if (sab) A.sfx.warn(); else A.sfx.chime();
     if (!sab && d.id === 'COFFEE') K3.kiss();   // the flight attendant in the cockpit leans in and hands the captain the cup
     subtitle((sab ? 'SABOTAGE IN THE CABIN · ' : 'CABIN CREW · ') + d.title + (eff ? ' · ' + sign + ' SECONDS' : ''), 4200);

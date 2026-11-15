@@ -233,3 +233,7 @@ If the itch.io zip gets too big, leave this folder out of the package; the game 
 | `sfx_ui_whoosh_a.mp3` | 1.0 s |
 | `sfx_wind_rush_a.mp3` | 5.0 s |
 | `sfx_zip_cuff_a.mp3` | 1.5 s |
+
+## Swapped in (15 November 2026)
+
+The radio lines `atc_intro`, `atc_mid`, `atc_final`, `atc_win`, `atc_lose` and `mayday` in `audio/` are now the `alt_*_a` takes, so no recording says the old "Kara Kutu" callsign any more. The jam recordings are kept here as `orig_*.mp3`. The cabin announcements (`pa_*`), cabin calls (`call_*`), passengers (`pax_*`) and warnings (`gpws_*`) are unchanged: their texts (in `js/rules.js`) carry no callsign. Not checked by ear in the cloud, so give them one listen.
