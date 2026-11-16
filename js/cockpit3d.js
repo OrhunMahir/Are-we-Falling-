@@ -1201,48 +1201,9 @@
     if (guestMode || !renderer || !PAIR[role]) return;
     let v = visitors[role];
     if (!v) {
-      if (!on) return; const f = makeFigure(LOOKS[role]); f.g.visible = false; scene.add(f.g); v = visitors[role] = { f, on: false, x: 0, z: 0, yaw: 0, ph: Math.random() * 6, kiss: 0, wait: 0 };
-      if (role === 'attendant') meshyAttendant(v);
+      if (!on) return; const f = makeFigure(LOOKS[role]); f.g.visible = false; scene.add(f.g); v = visitors[role] = { f, on: false, x: 0, z: 0, yaw: 0, ph: Math.random() * 6, kiss: 0 };
     }
-    if (on && !v.on) v.wait = 0;
     v.on = !!on;
-  }
-  // The flight attendant as the cabin shows her: the Meshy model from js/roles/cabin-people.js with the face and standing
-  // pose of js/cabin-fit.js, walking with her own walk cycle. Both files are loaded on her first visit; she waits outside
-  // the door for up to 3 s while they load, and keeps the blocky figure if they cannot.
-  function addScript(src, cb) { const sc = document.createElement('script'); sc.src = src; sc.onload = () => cb(true); sc.onerror = () => cb(false); document.head.appendChild(sc); }
-  function meshyAttendant(v) {
-    v.loading = true;
-    const done = () => { v.loading = false; };
-    const ready = () => {
-      const b64 = window.KK_GLB && window.KK_GLB.crew_att;
-      if (!b64 || !T.GLTFLoader || !window.KKCrewFit) return done();
-      try {
-        const bin = atob(b64), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-        new T.GLTFLoader().parse(buf.buffer, '', (gltf) => {
-          try {
-            if (visitors.attendant !== v) return done();
-            const model = gltf.scene, f = v.f; let skinned = null;
-            model.traverse((o) => { if (o.isSkinnedMesh && !skinned) skinned = o; if (o.isMesh) o.frustumCulled = false; });
-            if (!skinned) return done();
-            model.updateMatrixWorld(true);
-            const box = new T.Box3().setFromObject(model), c = box.getCenter(new T.Vector3()), k = 1.66 / FIG / ((box.max.y - box.min.y) || 1);
-            model.scale.multiplyScalar(k); model.position.set(-c.x * k, -box.min.y * k, -c.z * k);   // feet on the floor, centred on the figure
-            model.traverse((o) => { if (o.material && o.material.metalness !== undefined) { o.material.metalness = Math.min(o.material.metalness, 0.1); o.material.roughness = Math.max(o.material.roughness, 0.6); } });
-            const turn = new T.Group(); turn.rotation.y = Math.PI; turn.add(model);                    // facing -z like the figure
-            f.hips.visible = false; f.arms.forEach((a) => { a.up.visible = false; a.fo.visible = false; });
-            f.g.add(turn);
-            v.mixer = gltf.animations && gltf.animations.length ? new T.AnimationMixer(model) : null;
-            if (v.mixer) v.mixer.clipAction(gltf.animations[0]).play();
-            v.fit = KKCrewFit.member(f.g, skinned);   // measures her speed from the figure's own position
-          } catch (e) { console.warn('cockpit: attendant model', e); }
-          done();
-        }, () => done());
-      } catch (e) { done(); }
-    };
-    if (window.KK_GLB && window.KK_GLB.crew_att && window.KKCrewFit) return ready();
-    const fit = () => (window.KKCrewFit ? ready() : addScript('js/cabin-fit.js', ready));
-    if (window.KK_GLB && window.KK_GLB.crew_att) fit(); else addScript('js/roles/cabin-people.js', (ok) => (ok ? fit() : done()));
   }
   let forced = false;                                       // the intruder cracked the door: it stands open with nobody in it
   function updateVisitors(dt) {
@@ -1251,7 +1212,6 @@
       const v = visitors[role], f = v.f;
       if (!f.g.visible) {                                   // still outside: they step in once the door has swung open
         if (!v.on) return;
-        if (v.loading && (v.wait += dt) < 3) return;      // her model is still loading: she knocks a moment longer
         open = 1; if (doorG && doorG.rotation.y > -1) return;
         v.x = GATE[0]; v.z = GATE[1]; v.yaw = 0; f.g.visible = true;
       }
@@ -1268,7 +1228,6 @@
       f.torso.rotation.set(-0.02 - kk * 0.42 + Math.sin(clock * 1.1 + v.ph) * 0.012, Math.sin(clock * 0.5 + v.ph) * 0.05, 0);
       f.head.rotation.set(-kk * 0.2 - (calm ? 0 : 0.12), Math.sin(clock * 0.37 + v.ph) * (calm ? 0.15 : 0.45), 0);
       poseFigure(f, 1, null, 0);
-      if (v.mixer) { v.mixer.update(dt * (walk ? 1 : 0.0001)); if (v.fit) KKCrewFit.stand(v.fit, dt); }
     });
     if (doorG) doorG.rotation.y += ((open ? -1.4 : 0) - doorG.rotation.y) * Math.min(1, dt * 6);
   }
